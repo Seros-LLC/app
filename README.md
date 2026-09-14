@@ -17,7 +17,7 @@ npm install
 export SEROS_SESSION_SECRET="$(openssl rand -hex 32)"
 export SEROS_SIGNING_SECRET="$(openssl rand -hex 32)"
 npm run migrate          # creates .seros/seros.db
-npm run seed             # creates demo members and prints generated passwords once
+npm run seed             # optional local bootstrap; no demo workspace is created
 npm start                # web app on http://localhost:3000
 npm run worker           # background worker, in a second terminal
 ```
@@ -34,7 +34,7 @@ loop, connect a Slack development workspace and select channels from the authent
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run eval` | scores detection against the golden set |
 | `npm run migrate` | applies `.seros/migrations/*.sql`, idempotent |
-| `npm run seed` | provisions demo members and prints any newly generated passwords once |
+| `npm run seed` | optional local bootstrap for development; production has no demo workspace or synthetic route |
 | `npm run set-password -- <memberId>` | sets or generates a member password from a host shell |
 | `npm run invite -- <memberId>` | creates a single-use password setup link from a host shell |
 | `npm run check:tenancy` | fails if any module reaches past `WorkspaceScope` |
@@ -73,6 +73,31 @@ npm start
 ```
 
 ### Environment Variables
+
+Production setup is fail-closed. Before deploying, configure real values in Vercel and run:
+
+```bash
+npx vercel env pull /tmp/seros-prod.env --environment production --yes
+npm run check:prod-env -- /tmp/seros-prod.env
+rm -f /tmp/seros-prod.env
+```
+
+The checker must pass before release. Production requires `SEROS_SLACK=http`,
+`SEROS_TRACKER=linear`, a real `SEROS_WORKSPACE`, `SLACK_CLIENT_ID`,
+`SLACK_CLIENT_SECRET`, `LINEAR_API_KEY`, `LINEAR_TEAM_ID`, and a hosted HTTPS
+provider configuration. Never put secret values in Git or paste them into logs.
+
+Slack's OAuth redirect URI must exactly be:
+`https://app.seros.dev/connect/slack/callback`
+
+The Slack app should request only the scopes listed on `/connect`; the install flow
+stores the bot token encrypted and binds the callback to the authenticated workspace member.
+
+Before first customer use, complete one real Slack installation, select at least one
+channel, send a consented test commitment, confirm it in Seros, and verify exactly one
+Linear issue is created. Use the provider's own logs and Linear's issue history for
+that test; do not use a demo workspace.
+
 
 | Variable | Description | Default |
 |---|---|---|
