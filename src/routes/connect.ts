@@ -9,12 +9,12 @@
  * result is a row plus an audit entry.
  */
 import type { Request, Response } from 'express';
-import crypto from 'node:crypto';
 import { openDb } from '../db/client';
 import { WorkspaceScope } from '../db/scope';
 import { slackClient } from '../slack/client';
 import { seal, open as openSecret, encryptionConfigured } from '../crypto';
 import { csrfToken } from '../auth';
+import { databaseOAuthStateStore, createOAuthState, consumeOAuthState } from '../slack/oauth-state';
 import { page, esc, empty, notice, setupRail, errorPage } from '../views';
 import type { ErrorAction, PageContext } from '../views';
 
@@ -57,9 +57,6 @@ export const SLACK_SCOPES = [
   'chat:write',         // reply into the source thread with the tracker link
   'users:read',         // map an author to a workspace member
 ];
-
-const state = new Map<string, { workspaceId: string; memberId: string; at: number }>();
-const STATE_TTL_MS = 10 * 60 * 1000;
 
 function redirectUri(req: Request): string {
   const base = process.env.SEROS_PUBLIC_URL || `${req.protocol}://${req.get('host')}`;
@@ -195,9 +192,10 @@ export async function connectStart(req: Request, res: Response) {
         actions: [{ href: '/connect', label: 'Back to Slack', primary: true }, { href: '/queue', label: 'Go to the queue' }] }));
   }
 
-  const nonce = crypto.randomBytes(16).toString('base64url');
-  state.set(nonce, { workspaceId: s.workspaceId, memberId: s.memberId, at: Date.now() });
-  for (const [k, v] of state) if (Date.now() - v.at > STATE_TTL_MS) state.delete(k);
+  const { state: nonce } = await createOAuthState(
+    databaseOAuthStateStore(db),
+    { workspaceId: s.workspaceId, memberId: s.memberId },
+  );
 
   const url = new URL('https://slack.com/oauth/v2/authorize');
   url.searchParams.set('client_id', clientId);
@@ -211,10 +209,9 @@ export async function connectStart(req: Request, res: Response) {
 /** GET /connect/slack/callback - Slack returns here with a code. */
 export async function connectCallback(req: Request, res: Response) {
   const nonce = String(req.query.state ?? '');
-  const entry = state.get(nonce);
-  state.delete(nonce);
-  if (!entry || Date.now() - entry.at > STATE_TTL_MS) {
-    // An unmatched state is a forged or stale callback. Nothing is stored.
+  const entry = await consumeOAuthState(databaseOAuthStateStore(openDb()), nonce);
+  if (!entry) {
+    // An unmatched state is a forged, replayed, or stale callback. Nothing is stored.
     return res.status(400).type('html').send(page('Slack', '/connect',
       '<h1>That link expired</h1><p class="sub">Start the connection again from the Slack page.</p>'));
   }

@@ -240,6 +240,13 @@ export const auditEvents = sqliteTable('audit_log', {
   at: integer('at').notNull(),                                 // brief `occurred_at`
 });
 
+export const oauthStates = sqliteTable('oauth_states', {
+  stateHash: text('state_hash').primaryKey(),
+  value: text('value').notNull(),
+  expiresAt: integer('expires_at').notNull(),
+  createdAt: integer('created_at').notNull(),
+});
+
 export const oauthProviders = sqliteTable('oauth_providers', {
   workspaceId: text('workspace_id').notNull().references(() => workspaces.id),
   memberId: text('member_id').notNull().references(() => members.id),
