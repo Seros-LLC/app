@@ -10,6 +10,14 @@ const valid = {
   SEROS_PROVIDER_BASE_URL: 'https://provider.invalid/v1',
   SEROS_PROVIDER_ALLOWED_HOSTS: 'provider.invalid',
   SEROS_PROVIDER_API_KEY: 'provider-key-at-least-sixteen',
+  SEROS_SLACK: 'http',
+  SEROS_TRACKER: 'linear',
+  SEROS_WORKSPACE: 'real-production-workspace',
+  SEROS_ENCRYPTION_KEY: 'encryption-key-at-least-sixteen',
+  LINEAR_API_KEY: 'linear-api-key-at-least-sixteen',
+  LINEAR_TEAM_ID: 'linear-team-id-123456',
+  SLACK_CLIENT_ID: 'slack-client-id-12345',
+  SLACK_CLIENT_SECRET: 'slack-client-secret',
   CRON_SECRET: 'cron-secret-at-least-sixteen',
 } as NodeJS.ProcessEnv;
 
@@ -76,6 +84,33 @@ test('serverless config refuses hosted transport without credentials', () => {
   assert.throws(
     () => validateServerlessEnvironment({ ...valid, SEROS_PROVIDER_API_KEY: '' }),
     /SEROS_PROVIDER_API_KEY/,
+  );
+});
+
+test('serverless config requires real Slack and tracker integrations', () => {
+  assert.throws(
+    () => validateServerlessEnvironment({ ...valid, SEROS_SLACK: 'fake' }),
+    /SEROS_SLACK must be http/,
+  );
+  assert.throws(
+    () => validateServerlessEnvironment({ ...valid, SEROS_TRACKER: 'fake' }),
+    /SEROS_TRACKER must be linear/,
+  );
+  assert.throws(
+    () => validateServerlessEnvironment({ ...valid, SEROS_WORKSPACE: 'demo' }),
+    /SEROS_WORKSPACE must be a real production workspace/,
+  );
+  assert.throws(
+    () => validateServerlessEnvironment({ ...valid, LINEAR_TEAM_ID: '' }),
+    /LINEAR_TEAM_ID is required/,
+  );
+  assert.throws(
+    () => validateServerlessEnvironment({ ...valid, SLACK_CLIENT_ID: '' }),
+    /SLACK_CLIENT_ID/,
+  );
+  assert.throws(
+    () => validateServerlessEnvironment({ ...valid, SLACK_CLIENT_SECRET: '' }),
+    /SLACK_CLIENT_SECRET/,
   );
 });
 

@@ -85,11 +85,11 @@ npm start
 | `SEROS_SESSION_SECRET` | Session signing key (min 16 chars) | **required** |
 | `SEROS_SIGNING_SECRET` | Slack request-signing secret (min 16 chars) | **required** |
 | `SEROS_DETECT_THRESHOLD` | Detection confidence threshold (0-100) | `55` |
-| `SEROS_TRACKER` | Which tracker receives confirmed tasks: `linear` or `fake` | `fake` |
+| `SEROS_TRACKER` | Which tracker receives confirmed tasks: `linear` in production, `fake` only for tests/local work | `fake` locally |
 | `LINEAR_API_KEY` | Linear personal API key, required when `SEROS_TRACKER=linear` | — |
 | `LINEAR_TEAM_ID` | Linear team the issues are created in | — |
 | `SEROS_TRACKER_TIMEOUT_MS` | Tracker HTTP timeout | `15000` |
-| `SEROS_SLACK` | Slack client: `http` (real) or `fake` | `fake` |
+| `SEROS_SLACK` | Slack client: `http` in production, `fake` only for tests/local work | `fake` locally |
 | `SLACK_CLIENT_ID` / `SLACK_CLIENT_SECRET` | Slack app credentials for the install flow | — |
 | `SEROS_ENCRYPTION_KEY` | 32 bytes (base64 or hex) sealing stored Slack tokens | **required to connect Slack** |
 | `SEROS_PUBLIC_URL` | Public base URL, for the OAuth redirect | request host |

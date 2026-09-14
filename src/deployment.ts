@@ -34,7 +34,28 @@ const requireHostedProviderUrl = (env: NodeJS.ProcessEnv): void => {
   }
 };
 
+const requireProductionIntegrations = (env: NodeJS.ProcessEnv): void => {
+  if ((env.SEROS_SLACK || '').trim().toLowerCase() !== 'http') {
+    throw new Error('SEROS_SLACK must be http on Vercel: the fake Slack client is not a production integration');
+  }
+  if ((env.SEROS_TRACKER || '').trim().toLowerCase() !== 'linear') {
+    throw new Error('SEROS_TRACKER must be linear on Vercel: the fake tracker is not a production integration');
+  }
+  const workspace = (env.SEROS_WORKSPACE || '').trim().toLowerCase();
+  if (!workspace || workspace === 'demo' || workspace.endsWith('.invalid')) {
+    throw new Error('SEROS_WORKSPACE must be a real production workspace on Vercel');
+  }
+  requireSecret(env, 'SEROS_ENCRYPTION_KEY');
+  requireSecret(env, 'LINEAR_API_KEY');
+  if (!env.LINEAR_TEAM_ID) {
+    throw new Error('LINEAR_TEAM_ID is required when SEROS_TRACKER=linear');
+  }
+  requireSecret(env, 'SLACK_CLIENT_ID');
+  requireSecret(env, 'SLACK_CLIENT_SECRET');
+};
+
 const requireUsableProvider = (env: NodeJS.ProcessEnv): void => {
+  requireProductionIntegrations(env);
   if (env.SEROS_PROVIDER === 'fake') {
     throw new Error('SEROS_PROVIDER=fake must never serve a deployment: it fabricates model output');
   }

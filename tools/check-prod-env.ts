@@ -54,7 +54,23 @@ for (let i = 0; i < 12; i++) {
     if (failures.includes(msg)) break;
     failures.push(msg);
     // Neutralise this cause so the next call reveals the next one.
-    if (msg.includes('SEROS_PROVIDER_CHAIN must not contain `fake`') || msg.includes('must include `http`')) {
+    if (msg.includes('SEROS_SLACK must be http')) {
+      env.SEROS_SLACK = 'http';
+    } else if (msg.includes('SEROS_TRACKER must be linear')) {
+      env.SEROS_TRACKER = 'linear';
+    } else if (msg.includes('SEROS_WORKSPACE must be a real')) {
+      env.SEROS_WORKSPACE = 'assumed-production-workspace';
+    } else if (msg.includes('SEROS_ENCRYPTION_KEY')) {
+      env.SEROS_ENCRYPTION_KEY = 'assumed-encryption-key';
+    } else if (msg.includes('LINEAR_API_KEY')) {
+      env.LINEAR_API_KEY = 'assumed-linear-api-key';
+    } else if (msg.includes('LINEAR_TEAM_ID')) {
+      env.LINEAR_TEAM_ID = 'assumed-linear-team-id';
+    } else if (msg.includes('SLACK_CLIENT_ID')) {
+      env.SLACK_CLIENT_ID = 'assumed-slack-client-id';
+    } else if (msg.includes('SLACK_CLIENT_SECRET')) {
+      env.SLACK_CLIENT_SECRET = 'assumed-slack-client-secret';
+    } else if (msg.includes('SEROS_PROVIDER_CHAIN must not contain `fake`') || msg.includes('must include `http`')) {
       env.SEROS_PROVIDER_CHAIN = 'http';
     } else if (msg.includes('SEROS_PROVIDER=fake')) {
       delete env.SEROS_PROVIDER;
@@ -77,6 +93,9 @@ if (failures.length === 0) {
 } else {
   console.log(`BLOCKED — ${failures.length} reason(s) the deployment would refuse to boot:\n`);
   failures.forEach((f, i) => console.log(`  ${i + 1}. ${f}`));
+  // A blocked production environment must fail CI/pre-deploy callers. The report
+  // remains human-readable, but a zero exit status would turn it into a warning.
+  process.exitCode = 1;
 }
 
 console.log('\nNot verifiable locally (Vercel hides secret values); assumed valid above:');
