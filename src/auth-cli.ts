@@ -13,7 +13,8 @@ import {
   MemberCredentials, hashPassword, passwordPolicyError, newInviteToken, inviteTtlMs,
 } from './password';
 
-const WS = process.env.SEROS_WORKSPACE || 'demo';
+const WS = process.env.SEROS_WORKSPACE || '';
+if (!WS) throw new Error('SEROS_WORKSPACE is required for the local auth command; production never seeds a workspace');
 
 const USAGE = `usage:
   npm run set-password -- <memberId> [password]   set or replace a password (generated if omitted)

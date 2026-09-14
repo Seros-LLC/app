@@ -15,7 +15,8 @@ import { migrateDbAsync, openDb } from './db/client';
 import { WorkspaceScope } from './db/scope';
 import { MemberCredentials, hashPassword, passwordPolicyError } from './password';
 
-const WS = process.env.SEROS_WORKSPACE || 'demo';
+const WS = process.env.SEROS_WORKSPACE || '';
+if (!WS) throw new Error('SEROS_WORKSPACE is required for the local seed command; production never seeds a workspace');
 
 const PEOPLE = [
   { id: 'u-ana', name: 'Ana Okafor',    role: 'owner'     as const, email: 'ana@demo.invalid' },

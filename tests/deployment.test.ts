@@ -87,18 +87,18 @@ test('serverless config refuses hosted transport without credentials', () => {
   );
 });
 
-test('serverless config requires real Slack and tracker integrations', () => {
+test('serverless config requires Slack and rejects fake or demo integrations', () => {
   assert.throws(
     () => validateServerlessEnvironment({ ...valid, SEROS_SLACK: 'fake' }),
     /SEROS_SLACK must be http/,
   );
   assert.throws(
     () => validateServerlessEnvironment({ ...valid, SEROS_TRACKER: 'fake' }),
-    /SEROS_TRACKER must be linear/,
+    /SEROS_TRACKER=fake/,
   );
   assert.throws(
     () => validateServerlessEnvironment({ ...valid, SEROS_WORKSPACE: 'demo' }),
-    /SEROS_WORKSPACE must be a real production workspace/,
+    /must not be a demo or placeholder/,
   );
   assert.throws(
     () => validateServerlessEnvironment({ ...valid, LINEAR_TEAM_ID: '' }),
@@ -111,6 +111,15 @@ test('serverless config requires real Slack and tracker integrations', () => {
   assert.throws(
     () => validateServerlessEnvironment({ ...valid, SLACK_CLIENT_SECRET: '' }),
     /SLACK_CLIENT_SECRET/,
+  );
+});
+
+test('serverless config permits deferring Linear without permitting a fake tracker', () => {
+  const { SEROS_TRACKER: _tracker, LINEAR_API_KEY: _key, LINEAR_TEAM_ID: _team, ...slackOnly } = valid;
+  assert.doesNotThrow(() => validateServerlessEnvironment({ ...slackOnly, SEROS_WORKSPACE: '', SEROS_TRACKER: '' }));
+  assert.throws(
+    () => validateServerlessEnvironment({ ...slackOnly, SEROS_TRACKER: 'fake' }),
+    /SEROS_TRACKER=fake/,
   );
 });
 

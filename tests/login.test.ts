@@ -157,11 +157,15 @@ test('importing the seed module has no database side effect', () => {
   const dir = mkdtempSync(join(tmpdir(), 'seros-seed-import-'));
   const dbPath = join(dir, 'must-not-be-created.db');
   const previous = process.env.SEROS_DB;
+  const previousWs = process.env.SEROS_WORKSPACE;
   process.env.SEROS_DB = dbPath;
+  delete process.env.SEROS_WORKSPACE;
   try {
-    require('../src/seed');
+    assert.throws(() => require('../src/seed'), /SEROS_WORKSPACE is required/);
     assert.equal(existsSync(dbPath), false);
   } finally {
+    if (previousWs === undefined) delete process.env.SEROS_WORKSPACE;
+    else process.env.SEROS_WORKSPACE = previousWs;
     if (previous === undefined) delete process.env.SEROS_DB;
     else process.env.SEROS_DB = previous;
     rmSync(dir, { recursive: true, force: true });

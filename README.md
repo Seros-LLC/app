@@ -17,7 +17,7 @@ npm install
 export SEROS_SESSION_SECRET="$(openssl rand -hex 32)"
 export SEROS_SIGNING_SECRET="$(openssl rand -hex 32)"
 npm run migrate          # creates .seros/seros.db
-npm run seed             # optional local bootstrap; no demo workspace is created
+SEROS_WORKSPACE=local-dev npm run seed  # optional local bootstrap; no demo workspace is created
 npm start                # web app on http://localhost:3000
 npm run worker           # background worker, in a second terminal
 ```
@@ -83,9 +83,11 @@ rm -f /tmp/seros-prod.env
 ```
 
 The checker must pass before release. Production requires `SEROS_SLACK=http`,
-`SEROS_TRACKER=linear`, a real `SEROS_WORKSPACE`, `SLACK_CLIENT_ID`,
-`SLACK_CLIENT_SECRET`, `LINEAR_API_KEY`, `LINEAR_TEAM_ID`, and a hosted HTTPS
-provider configuration. Never put secret values in Git or paste them into logs.
+real Slack OAuth credentials, a hosted HTTPS provider configuration, and no fake
+tracker or demo workspace. Linear is intentionally deferred: leave
+`SEROS_TRACKER` empty until Linear is configured. Confirmed tasks remain queued
+securely and are never sent to a fake tracker. Never put secret values in Git or
+paste them into logs.
 
 Slack's OAuth redirect URI must exactly be:
 `https://app.seros.dev/connect/slack/callback`
@@ -110,7 +112,7 @@ that test; do not use a demo workspace.
 | `SEROS_SESSION_SECRET` | Session signing key (min 16 chars) | **required** |
 | `SEROS_SIGNING_SECRET` | Slack request-signing secret (min 16 chars) | **required** |
 | `SEROS_DETECT_THRESHOLD` | Detection confidence threshold (0-100) | `55` |
-| `SEROS_TRACKER` | Which tracker receives confirmed tasks: `linear` in production, `fake` only for tests/local work | `fake` locally |
+| `SEROS_TRACKER` | Which tracker receives confirmed tasks: `linear` when configured; empty means Linear is deferred and tasks remain queued; `fake` only for tests/local work | empty in production |
 | `LINEAR_API_KEY` | Linear personal API key, required when `SEROS_TRACKER=linear` | — |
 | `LINEAR_TEAM_ID` | Linear team the issues are created in | — |
 | `SEROS_TRACKER_TIMEOUT_MS` | Tracker HTTP timeout | `15000` |

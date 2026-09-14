@@ -56,10 +56,14 @@ for (let i = 0; i < 12; i++) {
     // Neutralise this cause so the next call reveals the next one.
     if (msg.includes('SEROS_SLACK must be http')) {
       env.SEROS_SLACK = 'http';
-    } else if (msg.includes('SEROS_TRACKER must be linear')) {
+    } else if (msg.includes('SEROS_TRACKER=fake')) {
+      delete env.SEROS_TRACKER;
+    } else if (msg.includes('SEROS_TRACKER must be empty or linear')) {
       env.SEROS_TRACKER = 'linear';
+    } else if (msg.includes('SEROS_WORKSPACE must not be a demo')) {
+      delete env.SEROS_WORKSPACE;
     } else if (msg.includes('SEROS_WORKSPACE must be a real')) {
-      env.SEROS_WORKSPACE = 'assumed-production-workspace';
+      delete env.SEROS_WORKSPACE;
     } else if (msg.includes('SEROS_ENCRYPTION_KEY')) {
       env.SEROS_ENCRYPTION_KEY = 'assumed-encryption-key';
     } else if (msg.includes('LINEAR_API_KEY')) {

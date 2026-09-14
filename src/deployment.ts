@@ -38,17 +38,27 @@ const requireProductionIntegrations = (env: NodeJS.ProcessEnv): void => {
   if ((env.SEROS_SLACK || '').trim().toLowerCase() !== 'http') {
     throw new Error('SEROS_SLACK must be http on Vercel: the fake Slack client is not a production integration');
   }
-  if ((env.SEROS_TRACKER || '').trim().toLowerCase() !== 'linear') {
-    throw new Error('SEROS_TRACKER must be linear on Vercel: the fake tracker is not a production integration');
+  // Linear is intentionally deferred. Confirmed tasks remain queued until a real
+  // tracker is configured; they must never be written to a fake provider.
+  const tracker = (env.SEROS_TRACKER || '').trim().toLowerCase();
+  if (tracker === 'fake') {
+    throw new Error('SEROS_TRACKER=fake must never serve a deployment');
+  }
+  if (tracker && tracker !== 'linear') {
+    throw new Error('SEROS_TRACKER must be empty or linear on Vercel');
   }
   const workspace = (env.SEROS_WORKSPACE || '').trim().toLowerCase();
-  if (!workspace || workspace === 'demo' || workspace.endsWith('.invalid')) {
-    throw new Error('SEROS_WORKSPACE must be a real production workspace on Vercel');
+  if (workspace && (workspace === 'demo' || workspace.endsWith('.invalid'))) {
+    throw new Error('SEROS_WORKSPACE must not be a demo or placeholder workspace');
   }
+  // Signup creates real tenants. A configured workspace is optional because
+  // production must not depend on a pre-seeded/demo tenant.
   requireSecret(env, 'SEROS_ENCRYPTION_KEY');
-  requireSecret(env, 'LINEAR_API_KEY');
-  if (!env.LINEAR_TEAM_ID) {
-    throw new Error('LINEAR_TEAM_ID is required when SEROS_TRACKER=linear');
+  if (tracker === 'linear') {
+    requireSecret(env, 'LINEAR_API_KEY');
+    if (!env.LINEAR_TEAM_ID) {
+      throw new Error('LINEAR_TEAM_ID is required when SEROS_TRACKER=linear');
+    }
   }
   requireSecret(env, 'SLACK_CLIENT_ID');
   requireSecret(env, 'SLACK_CLIENT_SECRET');

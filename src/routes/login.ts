@@ -28,7 +28,7 @@ import { page, esc, notice } from '../views';
 import { issueCaptcha, consumeCaptcha } from '../captcha';
 import type { PageContext } from '../views';
 
-const WS = () => process.env.SEROS_WORKSPACE || 'demo';
+const WS = () => process.env.SEROS_WORKSPACE || '';
 
 /** The one sentence every failed sign-in gets, whatever actually went wrong. */
 const DENIED = 'Sign-in failed. Check your details and try again.';
