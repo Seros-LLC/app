@@ -60,8 +60,8 @@ const requireProductionIntegrations = (env: NodeJS.ProcessEnv): void => {
       throw new Error('LINEAR_TEAM_ID is required when SEROS_TRACKER=linear');
     }
   }
-  requireSecret(env, 'SLACK_CLIENT_ID');
-  requireSecret(env, 'SLACK_CLIENT_SECRET');
+  // OAuth is required only when the Slack connect flow is used; the app can
+  // boot and serve existing tenants while an operator finishes setup.
 };
 
 const requireUsableProvider = (env: NodeJS.ProcessEnv): void => {

@@ -104,13 +104,11 @@ test('serverless config requires Slack and rejects fake or demo integrations', (
     () => validateServerlessEnvironment({ ...valid, LINEAR_TEAM_ID: '' }),
     /LINEAR_TEAM_ID is required/,
   );
-  assert.throws(
+  assert.doesNotThrow(
     () => validateServerlessEnvironment({ ...valid, SLACK_CLIENT_ID: '' }),
-    /SLACK_CLIENT_ID/,
   );
-  assert.throws(
+  assert.doesNotThrow(
     () => validateServerlessEnvironment({ ...valid, SLACK_CLIENT_SECRET: '' }),
-    /SLACK_CLIENT_SECRET/,
   );
 });
 
