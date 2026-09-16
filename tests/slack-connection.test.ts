@@ -20,6 +20,7 @@ process.env.SEROS_SLACK = 'fake';
 
 import { openDb, migrateDbAsync } from '../src/db/client';
 import { WorkspaceScope } from '../src/db/scope';
+import { sourceConnections } from '../src/db/schema';
 import { workspaceIdForSlackTeam } from '../src/db/system';
 import { seal, open as openSecret } from '../src/crypto';
 import { sign } from '../src/routes/webhook';
@@ -84,6 +85,22 @@ test('the tenant comes from the stored connection, and disconnecting ends it', a
   assert.equal(await workspaceIdForSlackTeam(db, 'T-conn'), null, 'disconnect stops ingestion');
   const row = await scope.connection();
   assert.equal(row, undefined, 'the connection is gone, and so is the token');
+});
+
+test('a disconnected Slack team can be reclaimed by another workspace', async () => {
+  const path = freshDb();
+  await migrateDbAsync(path);
+  const db = openDb(path);
+  const first = await connected(db, 'ws-first', 'T-reclaim', ['C-picked']);
+  await first.revokeConnection();
+
+  const second = await connected(db, 'ws-second', 'T-reclaim', ['C-picked']);
+  assert.equal(await workspaceIdForSlackTeam(db, 'T-reclaim'), 'ws-second');
+  assert.equal((await second.connection())?.workspaceId, 'ws-second');
+
+  const rows = await db.select().from(sourceConnections);
+  assert.equal(rows.length, 2, 'the revoked row remains for audit while the new live row is installed');
+  assert.equal(rows.filter((row: any) => row.revokedAt == null).length, 1);
 });
 
 test('a message from a channel nobody ticked is never stored', async () => {

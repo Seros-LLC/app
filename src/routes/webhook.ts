@@ -2,7 +2,7 @@ import type { Request, Response } from 'express';
 import crypto from 'node:crypto';
 import { openDb } from '../db/client';
 import { WorkspaceScope } from '../db/scope';
-import { checkAndRecordReplay } from '../replay';
+import { checkAndRecordReplay, WEBHOOK_MAX_AGE_SEC } from '../replay';
 import { workspaceIdForSlackTeam } from '../db/system';
 import { enforceLimits } from '../limits';
 
@@ -14,7 +14,7 @@ export const secret = () => {
   }
   return s;
 };
-const MAX_AGE_SEC = 300;
+const MAX_AGE_SEC = WEBHOOK_MAX_AGE_SEC;
 
 export function sign(rawBody: string, ts: string, key: string = secret()): string {
   return 'v0=' + crypto.createHmac('sha256', key).update(`v0:${ts}:${rawBody}`).digest('hex');

@@ -180,7 +180,9 @@ export const sourceConnections = sqliteTable('source_connections', {
   revokedAt: integer('revoked_at'),
 }, (t)=>[
   primaryKey({columns:[t.workspaceId,t.provider]}),
-  uniqueIndex('source_connections_team').on(t.provider,t.teamId),
+  // A revoked row remains for audit/retention, but must not reserve the Slack team.
+  // The matching partial unique index is created by migration 0017.
+  uniqueIndex('source_connections_team').on(t.provider,t.teamId).where(sql`${t.revokedAt} is null`),
 ]);
 
 // "We only read these." A channel is read if and only if selected=1 here.

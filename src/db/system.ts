@@ -217,13 +217,16 @@ function reportReaped(count: number): number {
  */
 export async function workspaceIdForSlackTeam(db: Db, teamId: string): Promise<string | null> {
   if (!teamId) return null;
-  const rows = await db.select({ workspaceId: sourceConnections.workspaceId, revokedAt: sourceConnections.revokedAt })
+  const rows = await db.select({ workspaceId: sourceConnections.workspaceId })
     .from(sourceConnections)
-    .where(and(eq(sourceConnections.provider, 'slack'), eq(sourceConnections.teamId, teamId)))
+    .where(and(
+      eq(sourceConnections.provider, 'slack'),
+      eq(sourceConnections.teamId, teamId),
+      sql`${sourceConnections.revokedAt} is null`,
+    ))
     .limit(1);
   const row = (rows as any[])[0];
-  if (!row || row.revokedAt) return null;
-  return row.workspaceId as string;
+  return row?.workspaceId as string | null ?? null;
 }
 
 

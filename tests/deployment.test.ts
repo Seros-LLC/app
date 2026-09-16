@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { validateServerlessEnvironment } from '../src/deployment';
+import { replayWindowSec, WEBHOOK_MAX_AGE_SEC } from '../src/replay';
 
 const valid = {
   SEROS_SESSION_SECRET: 'session-secret-at-least-sixteen',
@@ -55,6 +56,23 @@ test('serverless config refuses ephemeral or absent databases', () => {
   assert.throws(
     () => validateServerlessEnvironment({ ...valid, DATABASE_URL: 'file:/tmp/seros.db' }),
     /DATABASE_URL/,
+  );
+});
+
+test('replay retention is never shorter than Slack signature validity', () => {
+  assert.equal(replayWindowSec({}), WEBHOOK_MAX_AGE_SEC);
+  assert.equal(replayWindowSec({ SEROS_REPLAY_WINDOW_SEC: '600' }), 600);
+  assert.throws(
+    () => replayWindowSec({ SEROS_REPLAY_WINDOW_SEC: '299' }),
+    /integer >= 300 seconds/,
+  );
+  assert.throws(
+    () => replayWindowSec({ SEROS_REPLAY_WINDOW_SEC: 'not-a-number' }),
+    /integer >= 300 seconds/,
+  );
+  assert.throws(
+    () => validateServerlessEnvironment({ ...valid, SEROS_REPLAY_WINDOW_SEC: '299' }),
+    /SEROS_REPLAY_WINDOW_SEC/,
   );
 });
 

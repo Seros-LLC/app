@@ -1,4 +1,5 @@
 import { isPgUrl } from './db/driver';
+import { replayWindowSec } from './replay';
 
 const requireSecret = (env: NodeJS.ProcessEnv, name: string): void => {
   const value = env[name];
@@ -91,6 +92,7 @@ export function validateServerlessEnvironment(env: NodeJS.ProcessEnv = process.e
   requireSecret(env, 'SEROS_SESSION_SECRET');
   requireSecret(env, 'SEROS_SIGNING_SECRET');
   requireSecret(env, 'CRON_SECRET');
+  replayWindowSec(env);
   if (!isPgUrl(env.DATABASE_URL)) {
     throw new Error('DATABASE_URL must be a postgres:// or postgresql:// URL on Vercel');
   }

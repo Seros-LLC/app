@@ -33,8 +33,27 @@ export const webhookReplayNonces = sqliteTable('webhook_replay_nonces', {
   expiresAt: integer('expires_at').notNull(),
 }, (t) => [index('webhook_replay_nonces_expires_at').on(t.expiresAt)]);
 
-/** Must be >= the verifier's MAX_AGE_SEC, or a request could outlive its nonce. */
-export const REPLAY_WINDOW_SEC = Number(process.env.SEROS_REPLAY_WINDOW_SEC || 300);
+/** Slack accepts signed requests for this long; replay retention must cover it. */
+export const WEBHOOK_MAX_AGE_SEC = 300;
+
+/**
+ * Parse replay retention at startup. A shorter or malformed window breaks the
+ * security invariant: Slack can still accept a signature after its nonce has
+ * been pruned, allowing the same request to be processed again.
+ */
+export function replayWindowSec(env: NodeJS.ProcessEnv = process.env): number {
+  const raw = env.SEROS_REPLAY_WINDOW_SEC?.trim();
+  if (!raw) return WEBHOOK_MAX_AGE_SEC;
+  const value = Number(raw);
+  if (!Number.isFinite(value) || !Number.isInteger(value) || value < WEBHOOK_MAX_AGE_SEC) {
+    throw new Error(
+      `SEROS_REPLAY_WINDOW_SEC must be an integer >= ${WEBHOOK_MAX_AGE_SEC} seconds`,
+    );
+  }
+  return value;
+}
+
+export const REPLAY_WINDOW_SEC = replayWindowSec();
 
 export type ReplayCheck = {
   /** true = first sight, recorded, caller may process. false = replay, refuse. */
