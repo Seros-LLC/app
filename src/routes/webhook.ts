@@ -51,14 +51,20 @@ export async function webhookHandler(req: Request, res: Response) {
   if (b.type === 'url_verification') return res.json({ challenge: b.challenge });
 
   const ev = b.event ?? b;
-  const teamId: string = b.team_id || b.workspace_id || '';
-  const channelId = ev.channel || 'unknown';
-  if (typeof ev.ts !== 'string' || !ev.ts) return res.status(400).json({ ok: false, error: 'missing_event_ts' });
-  const ts = ev.ts;
-  const authorId = ev.user || 'unknown';
-  const text = typeof ev.text === 'string' ? ev.text : '';
-  if (!text.trim()) return res.json({ ok: true, ignored: 'empty' });
   if (ev.bot_id || ev.subtype) return res.json({ ok: true, ignored: 'bot_or_subtype' });
+  const teamId: string = typeof b.team_id === 'string' ? b.team_id.trim() : '';
+  const channelId = typeof ev.channel === 'string' ? ev.channel.trim() : '';
+  if (!teamId || !channelId) return res.status(400).json({ ok: false, error: 'missing_event_context' });
+  if (typeof ev.ts !== 'string' || !ev.ts.trim()) return res.status(400).json({ ok: false, error: 'missing_event_ts' });
+  const ts = ev.ts;
+  const authorId = typeof ev.user === 'string' ? ev.user.trim() : '';
+  const text = typeof ev.text === 'string' ? ev.text : '';
+  if (!authorId) return res.status(400).json({ ok: false, error: 'missing_event_author' });
+  if (!text.trim()) return res.json({ ok: true, ignored: 'empty' });
+
+  // Validate the authenticated Slack context before spending a replay nonce or
+  // touching tenant state. Missing fields must never be coerced into a real
+  // workspace, channel, or author identifier.
 
   // open(), never ensure(): a signed event for an unknown workspace must not be able
   // to conjure a tenant into existence.

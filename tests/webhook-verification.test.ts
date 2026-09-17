@@ -294,3 +294,62 @@ test('signed but unparseable bytes are refused as bad json, not as a crash', asy
     'bad json stores no message and creates no workspace',
   );
 });
+
+test('a signed bot event is ignored before requiring a human author', async () => {
+  const raw = JSON.stringify({
+    team_id: TEAM,
+    event: { type: 'message', channel: CHANNEL, ts: `${Date.now() / 1000}`, bot_id: 'B1', text: 'automated update' },
+  });
+
+  const res = await post(signed(raw), raw);
+
+  assert.equal(res.status, 200);
+  assert.deepEqual(res.json, { ok: true, ignored: 'bot_or_subtype' });
+});
+
+test('a signed event must carry Slack team, channel, and author context', async () => {
+  const db = await connectedDb();
+  const before = await footprint(db);
+  const raw = JSON.stringify({
+    // workspace_id is not Slack's authenticated team_id and must not be accepted
+    // as a tenant selector, even when it happens to name a connected team.
+    workspace_id: TEAM,
+    event: { type: 'message', channel: CHANNEL, ts: `${Date.now() / 1000}`, text: 'I will ship this' },
+  });
+
+  const res = await post(signed(raw), raw);
+
+  assert.equal(res.status, 400);
+  assert.equal(res.json?.error, 'missing_event_context');
+  assert.deepEqual(await footprint(db), before, 'malformed events spend no nonce and write nothing');
+});
+
+test('a signed message without an author is refused before persistence', async () => {
+  const db = await connectedDb();
+  const before = await footprint(db);
+  const raw = JSON.stringify({
+    team_id: TEAM,
+    event: { type: 'message', channel: CHANNEL, ts: `${Date.now() / 1000}`, text: 'I will ship this' },
+  });
+
+  const res = await post(signed(raw), raw);
+
+  assert.equal(res.status, 400);
+  assert.equal(res.json?.error, 'missing_event_author');
+  assert.deepEqual(await footprint(db), before, 'events without an author write nothing');
+});
+
+test('a signed message rejects whitespace-only routing context before persistence', async () => {
+  const db = await connectedDb();
+  const before = await footprint(db);
+  const raw = JSON.stringify({
+    team_id: TEAM,
+    event: { type: 'message', channel: '   ', ts: `${Date.now() / 1000}`, user: 'U1', text: 'I will ship this' },
+  });
+
+  const res = await post(signed(raw), raw);
+
+  assert.equal(res.status, 400);
+  assert.equal(res.json?.error, 'missing_event_context');
+  assert.deepEqual(await footprint(db), before, 'invalid routing context spends no nonce and writes nothing');
+});
