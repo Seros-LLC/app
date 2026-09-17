@@ -186,12 +186,16 @@ export async function replayCapture(
   }
 
   // Counts only. Reading a customer's history is an act that belongs in the log.
-  await scope.audit('replay.capture', 'ok', {
+  const auditDetails = {
     days, channels: report.channelsScanned,
     messages_scanned: report.messagesScanned,
     commitments_detected: report.commitmentsDetected,
     detector_unavailable: report.detectorUnavailable,
-  }, { actorType: 'operator' });
+  };
+  await scope.audit('replay.capture', 'ok', auditDetails, { actorType: 'operator' });
+  // Keep the milestone's operator-facing event name stable for aggregate
+  // instrumentation without duplicating any customer content.
+  await scope.audit('replay_run', 'ok', auditDetails, { actorType: 'operator' });
 
   return report;
 }

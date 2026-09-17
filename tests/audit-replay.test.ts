@@ -209,6 +209,9 @@ test('the replay is recorded in the audit log as counts, never content', async (
   const row = rows.find((r: any) => r.event === 'replay.capture');
   assert.ok(row, 'reading a customer history is an audited act');
   assert.equal(row!.outcome, 'ok');
+  const instrumentation = rows.find((r: any) => r.event === 'replay_run');
+  assert.ok(instrumentation, 'the milestone instrumentation names replay runs');
+  assert.equal(instrumentation!.outcome, 'ok');
   assert.ok(!JSON.stringify(rows).includes('merger'), 'no message content reaches the audit log');
 
   setSlackClient(undefined);
