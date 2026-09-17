@@ -280,9 +280,18 @@ export async function channelsPage(req: Request, res: Response) {
       ${c.isPrivate ? '<span class="pill">private</span>' : ''}
     </label>`).join('');
 
+  // A saved selection is not a dead end: name the next step and set the
+  // expectation that drafts follow Slack activity, not the save itself.
+  const savedBanner = req.query.msg === 'saved'
+    ? notice('good', 'Channel selection saved',
+        'Seros now reads only the channels you ticked. Drafts appear in the queue after eligible activity in those channels — there is nothing to review until then.',
+        '<p><a class="button primary" href="/queue">Review drafts &rarr;</a></p>')
+    : '';
+
   const body = `<h1>Choose channels</h1>
     <p class="sub">This is your permission list. Seros reads only the channels you tick, and stores nothing from the rest of Slack.</p>
     ${setupRail('channels', new Set<import('../views').SetupStep>(['connect']))}
+    ${savedBanner}
     ${items
       ? `<form method="post" action="/channels">
           <input type="hidden" name="csrf" value="${esc(csrf)}">
@@ -292,11 +301,12 @@ export async function channelsPage(req: Request, res: Response) {
             ${items}
           </div>
           <div class="row"><button class="primary" type="submit">Save selection &rarr;</button>
-            <a class="button" href="/connect">Back to Slack</a></div>
+            <a class="button" href="/channels">Reload channels</a>
+            <a class="button ghost" href="/connect">Back to Slack</a></div>
         </form>`
       : empty('No channels are visible yet',
-          'Invite the Seros app to a Slack channel, then return here. We keep the current permission list untouched if Slack is unavailable.',
-          '<a class="button" href="/connect">Back to Slack</a>')}`;
+          'Invite the Seros app to a Slack channel, then reload this page. Seros only sees channels it has been invited to; the current permission list stays untouched if Slack is unavailable.',
+          '<a class="button primary" href="/channels">Reload channels</a><a class="button ghost" href="/connect">Back to Slack</a>')}`;
   res.type('html').send(page('Channels', '/channels', body, { member: me as any, csrf,
     flash: req.query.msg === 'connected' ? 'Slack connected. Choose the channels Seros may read.' : undefined }));
 }

@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 import { openDb } from '../db/client';
 import { WorkspaceScope } from '../db/scope';
-import { page, esc, empty, setupRail } from '../views';
+import { page, esc, empty, setupRail, auditDetail } from '../views';
 import type { PageContext } from '../views';
 
 import { csrfToken } from '../auth';
@@ -102,15 +102,30 @@ export async function auditPage(req: Request, res: Response) {
   const db = openDb();
   const scope = await WorkspaceScope.open(db, req.serosSession!.workspaceId);
   const rows = await scope.auditRows();
+
+  // The empty state points at whichever step of setup is still outstanding, so a
+  // new workspace is sent to the first useful action rather than a generic one.
+  const connection = await scope.connection();
+  const channels = connection ? await scope.selectedChannels() : [];
+  const emptyState = !connection
+    ? empty('No activity recorded yet',
+        'This log fills as the workspace is set up: connecting Slack, choosing channels, signing in, and reviewing work are all recorded here. Message content never is.',
+        '<a class="button primary" href="/connect">Connect Slack &rarr;</a>')
+    : channels.length === 0
+    ? empty('No activity recorded yet',
+        'Slack is connected. Choosing the channels Seros may read is the next step, and it will be the first entry here. Message content is never recorded.',
+        '<a class="button primary" href="/channels">Choose channels &rarr;</a>')
+    : empty('No activity recorded yet',
+        'This log records connections, permission changes, sign-ins, and reviews as they happen. Message content is never recorded here.',
+        '<a class="button" href="/queue">Go to the queue &rarr;</a>');
+
   const body = `<h1>Audit log</h1>
   <p class="sub">Append-only. Identifiers only &mdash; no message content ever reaches this table.</p>
-  ${rows.length === 0 ? empty('No activity recorded yet',
-      'This log starts when someone connects a source, changes a permission, or reviews work. Message content is never recorded here.',
-      '<a class="button" href="/connect">Connect Slack</a>') : `<div class="tablewrap"><table>
+  ${rows.length === 0 ? emptyState : `<div class="tablewrap"><table>
     <tr><th>#</th><th>When</th><th>Event</th><th>Outcome</th><th>Detail</th></tr>
     ${rows.map((r) => `<tr><td>${r.id}</td><td>${new Date(r.at).toISOString().replace('T', ' ').slice(0, 19)}</td>
       <td>${esc(r.event)}</td><td><span class="pill ${r.outcome === 'ok' ? 'ok' : ''}">${esc(r.outcome)}</span></td>
-      <td class="meta">${esc(r.detail ?? '')}</td></tr>`).join('')}
+      <td>${auditDetail(r.detail)}</td></tr>`).join('')}
   </table></div>`}`;
   res.type('html').send(page('Audit', '/audit', body, await pageCtx(req, scope)));
 }

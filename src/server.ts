@@ -10,15 +10,38 @@ import {
   loginPage, loginPost, signupPage, signupPost, logoutPost, setPasswordPage, setPasswordPost,
   passwordPage, passwordChangePost, membersPage, invitePost,
 } from './routes/login';
-import { requireSession, requireCsrf, rateLimit, sessionSecret, asyncHandler } from './auth';
+import { requireSession, requireCsrf, rateLimit, sessionSecret, asyncHandler, csrfToken } from './auth';
 import { cronDrain } from './routes/cron';
 import { checkHostedCredential } from './provider/transports';
 import { page, empty, notice } from './views';
+import type { PageContext } from './views';
 import { connectPage, connectStart, connectCallback, disconnect, channelsPage, channelsSave } from './routes/connect';
 import { WorkspaceScope } from './db/scope';
 
 
 const PORT = Number(process.env.PORT || 3000);
+
+/**
+ * The header context for an error or 404 page. A visitor who reaches these has a
+ * session (everything below requireSession does), so resolving them keeps their
+ * own account controls on the page: an outage or a mistyped URL must not read as
+ * a sign-out. If the account cannot be resolved - the failure being rendered may
+ * be the database itself - the page drops the account area rather than claim a
+ * signed-out state with a misleading "Sign in".
+ */
+async function errorContext(req: express.Request): Promise<PageContext> {
+  const s = req.serosSession;
+  if (!s) return {};
+  try {
+    const scope = await WorkspaceScope.open(openDb(), s.workspaceId);
+    const m = await scope.member(s.memberId);
+    return m
+      ? { member: { id: m.id, name: m.name, role: m.role }, csrf: csrfToken(s) }
+      : { suppressAccount: true };
+  } catch {
+    return { suppressAccount: true };
+  }
+}
 
 export function createApp() {
   const app = express();
@@ -95,20 +118,25 @@ export function createApp() {
   app.post('/confirm', rateLimit('confirm', 120, 60_000), requireCsrf, confirmHandler);
   app.get('/', (_req, res) => res.redirect(302, '/queue'));
 
-  app.use((_req, res) => res.status(404).type('html')
-    .send(page('Not found', '', `<h1>That page is not here</h1>
+  app.use(asyncHandler(async (req, res) => {
+    const body = `<h1>That page is not here</h1>
       <p class="sub">The address may be old, or it may have been typed incorrectly.</p>
       ${empty('Get back to your workspace',
           'Your drafts, tasks, connections, and audit log are still available.',
-          '<a class="button primary" href="/queue">Open the queue &rarr;</a>')}`)));
+          '<a class="button primary" href="/queue">Open the queue &rarr;</a>')}`;
+    res.status(404).type('html').send(page('Not found', '', body, await errorContext(req)));
+  }));
 
   // Nothing leaks a stack trace or a message body to the client.
-  app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  app.use((err: any, req: express.Request, res: express.Response, _next: express.NextFunction) => {
     console.error(JSON.stringify({ level: 'error', event: 'request.failed', error: String(err?.message ?? err) }));
-    res.status(500).type('html').send(page('Something went wrong', '', `<h1>Something went wrong</h1>
+    const body = `<h1>Something went wrong</h1>
       <p class="sub">We logged the failure. Your existing data is safe.</p>
       ${notice('info', 'Before you try again', 'If you were making a change, check the queue or refresh the page first. Then try again.')}
-      <div class="row"><a class="button primary" href="/queue">Return to the queue</a></div>`));
+      <div class="row"><a class="button primary" href="/queue">Return to the queue</a></div>`;
+    errorContext(req)
+      .then((ctx) => res.status(500).type('html').send(page('Something went wrong', '', body, ctx)))
+      .catch(() => res.status(500).type('html').send(page('Something went wrong', '', body, { suppressAccount: true })));
   });
   return app;
 }

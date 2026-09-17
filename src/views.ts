@@ -309,6 +309,22 @@ button,.button{border-radius:999px;font-family:var(--serif);font-weight:700;font
 .pick{border-radius:8px;padding:13px 12px;font-family:var(--sans)}.pick:hover{background:var(--vellum)}.pick input{accent-color:var(--accent-ink)}.tablewrap{border-top:2px solid var(--night);border-radius:var(--radius) var(--radius) 0 0;overflow:hidden}table{font-family:var(--sans)}caption.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}th{background:var(--vellum);border-bottom:1px solid rgba(8,13,74,.2)}td{padding:13px 9px}tr:hover td{background:var(--accent-wash)}.pill{border-radius:999px;font-family:var(--mono);font-size:.59rem;font-weight:800;letter-spacing:.07em}.pill.ok,.pill.created,.pill.confirmed{border-color:var(--ok);color:var(--ok);background:#eaf4ef}.pill.queued,.pill.pending{border-color:var(--accent-ink);color:var(--accent-ink);background:var(--accent-wash)}.pill.needs_review{border-color:var(--review);color:var(--review);background:#fdf5e6}.pill.failed,.pill.rejected{border-color:var(--danger);color:var(--danger);background:#fbeff0}
 footer.app-foot{border-top:1px solid var(--line);font-family:var(--mono);font-size:.64rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}.authbox{max-width:470px}.authbox .card{box-shadow:0 24px 60px rgba(3,6,32,.45)}body.auth{background:var(--night);background-image:radial-gradient(ellipse 60% 50% at 50% 0%,rgba(18,48,184,.4),transparent 70%)}body.auth .app-header{background:transparent;border-color:var(--board-line)}body.auth main.wrap{background:transparent}body.auth .authbox h1{color:#fff}body.auth .authbox .sub{color:var(--accent-dim)}body.auth .app-foot{border-color:var(--board-line);color:var(--accent-dim)}body.auth .app-foot a{color:#fff}
 @media(max-width:760px){header.app-header .wrap{padding-top:12px;padding-bottom:12px}nav.app-nav{gap:14px}.card{padding:18px}.steps li.now{background:var(--night)}main.wrap{padding-top:27px}}
+
+/* Screen-reader-only text, and the small external-link cue beside a link that
+   leaves the app. The cue is decorative; the .sr-only text carries the meaning. */
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.ext-cue{font-size:.85em;opacity:.75}
+
+/* Audit detail: readable key/value phrases, with the exact record one
+   disclosure away. Replaces a raw JSON string in a dense table cell. */
+.kvlist{display:flex;flex-wrap:wrap;gap:2px 14px}
+.kv{white-space:nowrap}
+.kv-k{color:var(--muted);text-transform:none;letter-spacing:0}
+.kv-k::after{content:':';color:var(--muted)}
+.kv-v{color:var(--ink)}
+.kvraw{margin-top:5px}
+.kvraw summary{cursor:pointer;color:var(--muted);font-size:.92em;font-family:var(--mono)}
+.kvraw code{display:inline-block;margin-top:5px;white-space:pre-wrap;word-break:break-all}
 `;
 
 export interface PageContext {
@@ -323,6 +339,14 @@ export interface PageContext {
    * ends; the sign-in page shows the brand and the way back to the site instead.
    */
   chrome?: 'app' | 'auth' | undefined;
+  /**
+   * For error pages shown to a visitor who is authenticated but whose account
+   * could not be resolved (an outage during the very request that failed). With
+   * no member to render, the header would otherwise show "Sign in", making an
+   * outage look like a sign-out. Set this to drop the account area entirely
+   * rather than claim a signed-out state. Ignored once `member` is present.
+   */
+  suppressAccount?: boolean | undefined;
 }
 
 /** Intent of a notice. `bad` is a failure, `warn` a misconfiguration, `good` a success. */
@@ -400,6 +424,46 @@ export function empty(title: string, detail: string, action?: string): string {
     (action ? `<div class="row">${action}</div>` : '') + `</div>`;
 }
 
+/**
+ * A link that leaves the app for the marketing site. It opens in a new tab so a
+ * person mid sign-in or mid setup does not lose their place, carries `rel`
+ * hardening, and states that it is external to both sighted and screen-reader
+ * users - the arrow is decorative, the parenthetical is announced.
+ */
+export function extLink(href: string, label: string, cls?: string): string {
+  return `<a href="${esc(href)}"${cls ? ` class="${esc(cls)}"` : ''} target="_blank" rel="noopener"` +
+    ` title="${esc(label)} (opens in a new tab)">${esc(label)}` +
+    `<span class="ext-cue" aria-hidden="true"> ↗</span>` +
+    `<span class="sr-only"> (opens in a new tab)</span></a>`;
+}
+
+/** A key/value detail record turned into a short readable phrase. */
+const humanizeKey = (k: string) => k.replace(/_/g, ' ');
+
+/**
+ * Audit detail as short human-readable phrases instead of a raw JSON blob. The
+ * table stores `{"member_id":"…","count":3}`; a reader wants "member id …,
+ * count 3", not implementation-shaped strings. The exact record is still one
+ * disclosure away for anyone who needs it. Every key and value is escaped, and a
+ * value that is not the expected flat object falls back to its escaped text.
+ */
+export function auditDetail(raw: unknown): string {
+  const s = typeof raw === 'string' ? raw : '';
+  if (!s) return '';
+  let obj: Record<string, unknown> | null = null;
+  try {
+    const parsed = JSON.parse(s);
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) obj = parsed as Record<string, unknown>;
+  } catch { /* not JSON - show the stored text as-is below */ }
+  const pairs = obj ? Object.entries(obj) : [];
+  if (!obj || pairs.length === 0) return `<span class="meta">${esc(s)}</span>`;
+  const phrases = pairs.map(([k, v]) =>
+    `<span class="kv"><span class="kv-k">${esc(humanizeKey(k))}</span> <span class="kv-v">${esc(String(v))}</span></span>`,
+  ).join('');
+  return `<div class="kvlist">${phrases}</div>` +
+    `<details class="kvraw"><summary>Technical detail</summary><code>${esc(s)}</code></details>`;
+}
+
 /** The four steps from an empty workspace to a confirmed task, and where you are. */
 export type SetupStep = 'connect' | 'channels' | 'queue' | 'tasks';
 const SETUP: [SetupStep, string, string][] = [
@@ -442,11 +506,11 @@ const BRAND = (href: string) => `<a class="brand-lockup" href="${href}">
 const FOOT = `<footer class="wrap app-foot">
   <div>Human confirmation required before any write. &copy; 2026 <strong>Seros, LLC</strong>.</div>
   <div>
-    <a href="https://seros.dev/">Website</a> &middot;
-    <a href="https://seros.dev/pricing">Pricing</a> &middot;
-    <a href="https://seros.dev/privacy">Privacy</a> &middot;
-    <a href="https://seros.dev/terms">Terms</a> &middot;
-    <a href="https://seros.dev/security">Security</a>
+    ${extLink('https://seros.dev/', 'Website')} &middot;
+    ${extLink('https://seros.dev/pricing', 'Pricing')} &middot;
+    ${extLink('https://seros.dev/privacy', 'Privacy')} &middot;
+    ${extLink('https://seros.dev/terms', 'Terms')} &middot;
+    ${extLink('https://seros.dev/security', 'Security')}
   </div>
 </footer>`;
 
@@ -465,20 +529,22 @@ export function page(title: string, active: string, body: string, ctx: PageConte
           `<button class="linkish" type="submit">Sign out</button></form>`
         : '') +
       `</div>`
+    : ctx.suppressAccount
+    ? ''
     : `<div class="who"><a href="/login" class="linkish">Sign in</a></div>`;
 
   const header = auth
     ? `<header class="app-header"><div class="wrap">
   ${BRAND('/login')}
   <nav class="app-nav">
-    <a href="https://seros.dev/" class="ext-link" title="Back to the Seros website">&#8592; seros.dev</a>
+    <a href="https://seros.dev/" class="ext-link" target="_blank" rel="noopener" title="Back to the Seros website (opens in a new tab)">&#8592; seros.dev<span class="sr-only"> (opens in a new tab)</span></a>
   </nav>
 </div></header>`
     : `<header class="app-header"><div class="wrap">
   ${BRAND('/queue')}
   <nav class="app-nav">
     ${nav}
-    <a href="https://seros.dev/" class="ext-link" title="Back to the Seros website">&#8592; seros.dev</a>
+    <a href="https://seros.dev/" class="ext-link" target="_blank" rel="noopener" title="Back to the Seros website (opens in a new tab)">&#8592; seros.dev<span class="sr-only"> (opens in a new tab)</span></a>
   </nav>
   ${who}
 </div></header>`;
