@@ -132,3 +132,23 @@ test('every WorkspaceScope read path stays inside its workspace', async () => {
   assert.equal(await f.a.isChannelSelected('C-b'), false);
   assert.equal(await f.b.isChannelSelected('C-a'), false);
 });
+
+test('a scope cannot mutate a neighbouring tenant through a foreign draft id', async () => {
+  // Reads are scoped above; the mutation surface is the other half. confirm() is
+  // the one call that both writes and can be handed an id, so a cross-tenant
+  // confirm is the sharpest test: workspace A must not be able to confirm B's
+  // still-pending draft, and the attempt must leave B untouched — no confirmation,
+  // no task, and the draft still pending for its real owner.
+  const f = await fixture();
+
+  const crossed = await f.a.confirm(f.pendingOnlyB, 'confirmed', 'member-a');
+  assert.equal(crossed.ok, false, 'A cannot reach across into B');
+  if (!crossed.ok) assert.equal(crossed.reason, 'not_found', 'the foreign draft is invisible, not merely forbidden');
+
+  // B is exactly as it was: its pending draft is still pending and gained no task.
+  assert.deepEqual((await f.b.pendingDrafts()).map((d) => d.id), [f.pendingOnlyB]);
+  assert.deepEqual((await f.b.recentTasks()).map((r) => r.id), [f.taskB]);
+  // ...and B can still confirm its own draft afterwards, proving nothing was consumed.
+  const owner = await f.b.confirm(f.pendingOnlyB, 'confirmed', 'member-b');
+  assert.equal(owner.ok, true, 'the real owner still confirms normally');
+});
