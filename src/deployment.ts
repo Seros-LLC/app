@@ -92,6 +92,10 @@ export function validateServerlessEnvironment(env: NodeJS.ProcessEnv = process.e
   requireSecret(env, 'SEROS_SESSION_SECRET');
   requireSecret(env, 'SEROS_SIGNING_SECRET');
   requireSecret(env, 'CRON_SECRET');
+  // Password-reset tokens are security-sensitive deployment material too. Validate
+  // this at module boot so a successful live probe can prove the complete hidden
+  // secret set rather than silently leaving one lazily checked.
+  requireSecret(env, 'SEROS_RESET_SECRET');
   replayWindowSec(env);
   if (!isPgUrl(env.DATABASE_URL)) {
     throw new Error('DATABASE_URL must be a postgres:// or postgresql:// URL on Vercel');

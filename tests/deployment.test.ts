@@ -20,6 +20,7 @@ const valid = {
   SLACK_CLIENT_ID: 'slack-client-id-12345',
   SLACK_CLIENT_SECRET: 'slack-client-secret',
   CRON_SECRET: 'cron-secret-at-least-sixteen',
+  SEROS_RESET_SECRET: 'reset-secret-at-least-sixteen',
 } as NodeJS.ProcessEnv;
 
 test('serverless config refuses missing or weak secrets', () => {

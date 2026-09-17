@@ -7,12 +7,29 @@
  * placeholder "[SENSITIVE]". Those are reported separately as "cannot verify
  * locally" rather than being counted as passes or failures: this script proves
  * what IS broken, and is honest about what it cannot see.
+ *
+ * `--live-probe <https-url>` closes most of that gap without a human. The
+ * deployed function runs this same contract at module scope, so a healthy answer
+ * is evidence about the values we cannot read. See tools/live-probe.ts for what
+ * that does and does not prove.
+ *
+ *   npm run check:prod-env -- /tmp/seros-prod.env --live-probe https://app.seros.dev
  */
 import { readFileSync } from 'node:fs';
 import { validateServerlessEnvironment } from '../src/deployment';
+import { probeLiveBoot, classifyHiddenKeys, renderLiveProbe, parseCliArgs } from './live-probe';
 
 const PLACEHOLDER = '[SENSITIVE]';
-const ENV_FILE = process.argv[2] ?? '/tmp/seros-prod.env';
+
+let parsed: { envFile: string; liveProbeUrl: string | null };
+try {
+  parsed = parseCliArgs(process.argv.slice(2));
+} catch (e: any) {
+  console.error(String(e?.message ?? e));
+  process.exit(2);
+}
+const ENV_FILE = parsed.envFile;
+const LIVE_PROBE_URL = parsed.liveProbeUrl;
 
 function parseEnvFile(path: string): Record<string, string> {
   const out: Record<string, string> = {};
@@ -102,8 +119,36 @@ if (failures.length === 0) {
   process.exitCode = 1;
 }
 
-console.log('\nNot verifiable locally (Vercel hides secret values); assumed valid above:');
-for (const k of assumed) console.log(`  - ${k}`);
-console.log('\nThese still need a human check for the rules the contract enforces:');
-console.log('  - SEROS_SESSION_SECRET, SEROS_SIGNING_SECRET, CRON_SECRET: each >= 16 chars');
-console.log('  - DATABASE_URL: must start postgres:// or postgresql://');
+/** Today's conservative report, unchanged, for runs without --live-probe. */
+function reportUnverified(): void {
+  console.log('\nNot verifiable locally (Vercel hides secret values); assumed valid above:');
+  for (const k of assumed) console.log(`  - ${k}`);
+  console.log('\nThese still need a human check for the rules the contract enforces:');
+  console.log('  - SEROS_SESSION_SECRET, SEROS_SIGNING_SECRET, CRON_SECRET: each >= 16 chars');
+  console.log('  - DATABASE_URL: must start postgres:// or postgresql://');
+}
+
+async function main(): Promise<void> {
+  if (!LIVE_PROBE_URL) {
+    reportUnverified();
+    return;
+  }
+
+  console.log('\nNot readable locally (Vercel hides secret values); asking the deployment instead:');
+  for (const k of assumed) console.log(`  - ${k}`);
+
+  const probe = await probeLiveBoot(LIVE_PROBE_URL);
+  const classification = classifyHiddenKeys(assumed, probe);
+  for (const line of renderLiveProbe(probe, classification)) console.log(line);
+
+  if (!probe.proven) {
+    // The operator asked for live proof and did not get it. Silently degrading to
+    // "needs a human check" would let a broken deployment pass a green pipeline.
+    process.exitCode = 1;
+  }
+}
+
+main().catch((e: any) => {
+  console.error(`live probe failed: ${String(e?.message ?? e)}`);
+  process.exitCode = 1;
+});
