@@ -152,7 +152,7 @@ export const confirmations = sqliteTable('confirmations', {
 // A NULL field here means the human did not change that field.
 export const confirmationEdits = sqliteTable('confirmation_edits', {
   workspaceId: text('workspace_id').notNull().references(() => workspaces.id),
-  confirmationId: text('confirmation_id').notNull(),
+  confirmationId: text('confirmation_id').notNull().references(() => confirmations.id),
   editedFields: text('edited_fields').notNull(),  // 'title,owner' — names only
   title: text('title'),
   outcome: text('outcome'),
