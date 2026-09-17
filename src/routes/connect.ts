@@ -226,8 +226,9 @@ export async function connectCallback(req: Request, res: Response) {
       teamId: install.teamId, teamName: install.teamName, botUserId: install.botUserId,
       tokenEnc: seal(install.botToken), scopes: install.scopes, installedBy: entry.memberId,
     });
-    // OPERATIONS-CHECKLIST section 7: source_connected.
-    await scope.audit('source_connected', 'ok',
+    // OPERATIONS-CHECKLIST section 7: source_connected. Emitted through instrument()
+    // so it carries tier and source alongside workspace id (SER-9).
+    await scope.instrument('source_connected', 'web',
       { provider: 'slack', team_id: install.teamId, member_id: entry.memberId, scopes: install.scopes });
     return res.redirect(303, '/channels?msg=connected');
   } catch (e: any) {

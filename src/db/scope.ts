@@ -17,7 +17,7 @@
  * `(await q.limit(1))[0]` instead of `.get()`, and a row count is read through
  * affectedRows(), which knows about both `changes` and `rowCount`.
  */
-import { and, eq, desc, inArray, sql } from 'drizzle-orm';
+import { and, eq, desc, inArray, isNull, sql } from 'drizzle-orm';
 import { randomUUID, createHash } from 'node:crypto';
 import type { openDb } from './client';
 import { affectedRows } from './client';
@@ -28,9 +28,34 @@ import {
   sourceConnections, sourceChannels, confirmationEdits,
   DAY_MS, DEFAULT_DRAFT_TTL_DAYS,
 } from './schema';
+import type { BillingTier } from './schema';
 import { normaliseEmail } from '../password';
 
 type Db = ReturnType<typeof openDb>;
+
+/**
+ * The instrumentation event names OPERATIONS-CHECKLIST §7 requires before launch.
+ * They are a CLOSED set on purpose: a typo in an aggregate event name is a metric
+ * that silently reads zero forever, which is exactly how the acceptance-rate gate
+ * ("at least 60% once there are at least 20 actioned suggestions") got un-computable.
+ *
+ * `task_created`, `task_completed`, `seat_added` and `trial_started` are listed in the
+ * checklist too and are tracked separately; this set is the six SER-9 names plus the
+ * two already emitted, so every name here has a live emitter.
+ */
+export const MILESTONE_EVENTS = [
+  'workspace_created', 'source_connected', 'tracker_connected', 'replay_run',
+  'suggestion_shown', 'suggestion_confirmed', 'suggestion_rejected', 'trial_converted',
+] as const;
+export type MilestoneEvent = (typeof MILESTONE_EVENTS)[number];
+
+/**
+ * Which surface an instrumented act came from. `slack` is the chat source, `web` the
+ * product UI, `system` a background worker with no human at the other end, `operator`
+ * a maintenance CLI run by us.
+ */
+export const EVENT_SOURCES = ['slack', 'web', 'system', 'operator'] as const;
+export type EventSource = (typeof EVENT_SOURCES)[number];
 
 export class UnknownWorkspace extends Error {}
 
@@ -74,6 +99,63 @@ export class WorkspaceScope {
       ...(who?.requestId ? { requestId: who.requestId } : {}),
       detail: detail ? JSON.stringify(detail) : null, at: Date.now(),
     });
+  }
+
+  /**
+   * The workspace/billing tier, cached for the life of the scope.
+   *
+   * OPERATIONS-CHECKLIST §7 requires every instrumentation event to carry workspace
+   * id, tier and source. A workspace's tier does not change inside one request, so a
+   * single read per scope is enough and instrumentation never costs a query per event.
+   */
+  private tierCache: BillingTier | undefined;
+  async billingTier(): Promise<BillingTier> {
+    if (this.tierCache) return this.tierCache;
+    const row = (await this.db.select({ tier: workspaces.billingTier }).from(workspaces)
+      .where(eq(workspaces.id, this.workspaceId)).limit(1))[0];
+    this.tierCache = (row?.tier ?? 'trial') as BillingTier;
+    return this.tierCache;
+  }
+
+  /**
+   * Move a workspace between billing tiers. The trial -> paid transition is the
+   * product event `trial_converted`; callers do not have to remember a second call.
+   * `source` identifies the conversion surface (checkout webhook, operator, etc.).
+   */
+  async setBillingTier(
+    tier: BillingTier,
+    source: EventSource = 'system',
+    who?: Parameters<WorkspaceScope['audit']>[3],
+  ): Promise<void> {
+    const previous = await this.billingTier();
+    await this.db.update(workspaces).set({ billingTier: tier }).where(eq(workspaces.id, this.workspaceId));
+    this.tierCache = tier;
+    if (previous === 'trial' && tier !== 'trial') {
+      await this.instrument('trial_converted', source, { from_tier: previous, to_tier: tier }, who);
+    }
+  }
+
+  /**
+   * The OPERATIONS-CHECKLIST §7 instrumentation event names, emitted ALONGSIDE the
+   * operational audit events rather than instead of them (the pattern commit 780ff462
+   * established for replay_run beside replay.capture): existing consumers of
+   * `draft.confirmed` keep working, and the milestone's acceptance-rate gate gets the
+   * names its own brief specifies.
+   *
+   * Every row carries the three dimensions the brief requires:
+   *   workspace_id  already structural — the audit row's own column
+   *   tier          the workspace/billing tier, NOT the provider model tier
+   *   source        which surface the act came from ('slack', 'web', 'system', ...)
+   *
+   * Content never appears here, same as audit(): ids, counts and enum values only.
+   */
+  async instrument(
+    event: MilestoneEvent,
+    source: EventSource,
+    detail?: Record<string, string | number>,
+    who?: Parameters<WorkspaceScope['audit']>[3],
+  ): Promise<void> {
+    await this.audit(event, 'ok', { ...(detail ?? {}), tier: await this.billingTier(), source }, who);
   }
 
   async meter(purpose: 'detect'|'draft'|'route'|'replay'|'other',
@@ -163,6 +245,28 @@ export class WorkspaceScope {
     return await this.db.select().from(drafts)
       .where(and(eq(drafts.workspaceId, this.workspaceId), eq(drafts.state, 'pending')))
       .orderBy(desc(drafts.createdAt));
+  }
+
+  /**
+   * Pending drafts as rendered by the human review queue. This is deliberately
+   * separate from pendingDrafts(): assistant retrieval and other internal reads
+   * also need the pending set, but must not manufacture a human impression.
+   *
+   * The conditional update makes the event idempotent across refreshes and
+   * concurrent tabs. Only rows this call wins become suggestion_shown events.
+   */
+  async pendingDraftsForQueue() {
+    const rows = await this.pendingDrafts();
+    const now = Date.now();
+    for (const row of rows) {
+      if (row.firstShownAt !== null) continue;
+      const changed = await this.db.update(drafts).set({ firstShownAt: now }).where(and(
+        eq(drafts.workspaceId, this.workspaceId), eq(drafts.id, row.id), isNull(drafts.firstShownAt)));
+      if (affectedRows(changed) === 1) {
+        await this.instrument('suggestion_shown', 'web', { draft_id: row.id });
+      }
+    }
+    return rows;
   }
   async draft(id: string) {
     return (await this.db.select().from(drafts)
@@ -298,6 +402,12 @@ export class WorkspaceScope {
     await this.audit(decision === 'rejected' ? 'draft.rejected' : 'draft.confirmed', 'ok',
                      { draft_id: draftId, confirmation_id: confirmationId, member_id: memberId },
                      { actorType: 'member', actorId: memberId, objectType: 'draft', objectId: draftId });
+    // ...and the milestone name beside it (alias, not rename — commit 780ff462's
+    // pattern). This is the pair the acceptance-rate exit gate counts, so it is
+    // emitted on the same path as the operational event and cannot drift from it.
+    await this.instrument(decision === 'rejected' ? 'suggestion_rejected' : 'suggestion_confirmed',
+                          'web', { draft_id: draftId, confirmation_id: confirmationId, edited: edited ? 1 : 0 },
+                          { actorType: 'member', actorId: memberId, objectType: 'draft', objectId: draftId });
 
     if (decision === 'rejected') return { ok: true as const, confirmationId, taskId: null };
 
@@ -390,7 +500,7 @@ export class WorkspaceScope {
    * together, so no stale worker can leave a newer claim behind a created task.
    */
   async completeTaskWrite(taskId: string, token: string, result: { tracker: string; externalId: string; externalUrl: string }): Promise<boolean> {
-    return withTx(this.db, async (tx) => {
+    const done = await withTx(this.db, async (tx) => {
       const claim = await tx.update(taskWrites)
         .set({ state: 'done', tracker: result.tracker, externalId: result.externalId,
                externalUrl: result.externalUrl, completedAt: Date.now() })
@@ -403,6 +513,23 @@ export class WorkspaceScope {
       if (affectedRows(task) === 0) throw new Error('claimed task was not queued');
       return true;
     });
+
+    // tracker_connected (SER-9), emitted on the FIRST task this workspace ever landed
+    // in the tracker. Seros has no per-workspace tracker OAuth flow to hook — the
+    // tracker is deployment-level env (SEROS_TRACKER) — so "connected" is defined as
+    // proven working end to end, which is the fact the activation funnel actually wants.
+    // Outside the transaction: an instrumentation write must never roll back the task.
+    if (done) {
+      const priorWrites = await this.db.select({ id: taskWrites.taskId }).from(taskWrites)
+        .where(and(eq(taskWrites.workspaceId, this.workspaceId), eq(taskWrites.state, 'done'),
+                   sql`${taskWrites.taskId} <> ${taskId}`)).limit(1);
+      if (priorWrites.length === 0) {
+        await this.instrument('tracker_connected', 'system',
+                              { tracker: result.tracker, task_id: taskId },
+                              { actorType: 'system', objectType: 'task', objectId: taskId });
+      }
+    }
+    return done;
   }
 
   /** The tracker call failed. Only its current holder may drop the claim. */

@@ -79,6 +79,8 @@ Production setup is fail-closed. Before deploying, configure real values in Verc
 ```bash
 npx vercel env pull /tmp/seros-prod.env --environment production --yes
 npm run check:prod-env -- /tmp/seros-prod.env
+# To prove Vercel-hidden values through the deployed boot contract:
+npm run check:prod-env -- /tmp/seros-prod.env --live-probe https://app.seros.dev
 rm -f /tmp/seros-prod.env
 ```
 

@@ -25,7 +25,7 @@ export async function queuePage(req: Request, res: Response) {
   const me = await scope.member(s.memberId);
   const canConfirm = !!me && me.status === 'active' && me.role !== 'viewer';
   const token = csrfToken(s);
-  const rows = await scope.pendingDrafts();
+  const rows = await scope.pendingDraftsForQueue();
   const reasons = await reasonsFor(scope, rows.map((d) => d.id));
   const flash = typeof req.query.msg === 'string' ? req.query.msg.slice(0, 200) : '';
   const connection = await scope.connection();

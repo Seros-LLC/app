@@ -101,6 +101,8 @@ test('every WorkspaceScope read path stays inside its workspace', async () => {
   assert.equal((await f.b.draft(f.pendingA)), undefined);
   assert.deepEqual((await f.a.pendingDrafts()).map((d) => d.id), [f.pendingOnlyA]);
   assert.deepEqual((await f.b.pendingDrafts()).map((d) => d.id), [f.pendingOnlyB]);
+  assert.equal((await f.a.pendingDraftsForQueue()).length, 1);
+  assert.equal((await f.b.pendingDraftsForQueue()).length, 1);
   assert.deepEqual(await f.a.draftReasons([f.pendingA, f.pendingB]), { [f.pendingA]: 'A-only reason' });
   assert.deepEqual(await f.b.draftReasons([f.pendingA, f.pendingB]), { [f.pendingB]: 'B-only reason' });
 

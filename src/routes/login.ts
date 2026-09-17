@@ -180,6 +180,10 @@ export async function signupPost(req: Request, res: Response) {
   await creds.setPassword(memberId, await hashPassword(password));
   await scope.audit('workspace.signup', 'ok', { member_id: memberId },
                     { actorType: 'member', actorId: memberId, objectType: 'workspace', objectId: workspaceId });
+  // Milestone instrumentation (SER-9) beside the operational event. Source is 'web':
+  // self-serve signup is the only path that reaches here.
+  await scope.instrument('workspace_created', 'web', { member_id: memberId },
+                         { actorType: 'member', actorId: memberId, objectType: 'workspace', objectId: workspaceId });
   const pv = await creds.passwordVersion(memberId);
   startSession(res, { workspaceId, memberId, pv });
   return res.redirect(303, '/queue?msg=' + encodeURIComponent('Workspace created. Connect Slack when you are ready.'));

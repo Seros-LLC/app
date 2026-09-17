@@ -14,10 +14,21 @@ export const DAY_MS = 86_400_000;
 // unreviewed customer content does not sit in the database indefinitely.
 export const DEFAULT_DRAFT_TTL_DAYS = 14;
 
+/**
+ * The workspace/billing tier the OPERATIONS-CHECKLIST §7 instrumentation means when
+ * it says every event carries "tier". It is deliberately NOT the provider model tier
+ * (cheap/standard/careful in src/provider/pricing.ts), which is a cost-routing knob
+ * and says nothing about what the customer pays. Defaults to 'trial' because a
+ * workspace that has never been billed is on trial by definition.
+ */
+export const BILLING_TIERS = ['trial','starter','team','scale'] as const;
+export type BillingTier = (typeof BILLING_TIERS)[number];
+
 export const workspaces = sqliteTable('workspaces', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
   status: text('status', { enum: ['active','suspended','deleting','deleted'] }).notNull().default('active'),
+  billingTier: text('billing_tier', { enum: BILLING_TIERS }).notNull().default('trial'),
   retentionContentDays: integer('retention_content_days').notNull().default(30),
   dailyBudgetCents: integer('daily_budget_cents').notNull().default(0),
   monthlyBudgetCents: integer('monthly_budget_cents').notNull().default(0),
@@ -89,6 +100,11 @@ export const drafts = sqliteTable('drafts', {
   state: text('state', { enum:['pending','confirmed','rejected','expired','superseded'] }).notNull().default('pending'),
   provider: text('provider'),
   createdAt: integer('created_at').notNull(),
+  // The first time a human actually saw this draft in the queue (SER-9
+  // suggestion_shown). NULL means never rendered to anyone. Deduplicating here rather
+  // than emitting per render is what makes shown/confirmed a real acceptance rate:
+  // a page refresh must not inflate the denominator.
+  firstShownAt: integer('first_shown_at'),
   // When this draft stops being actionable. NULLABLE on purpose: rows written before
   // the column existed have no deadline, and the sweeper falls back to
   // created_at + TTL for them rather than treating NULL as "never expires".

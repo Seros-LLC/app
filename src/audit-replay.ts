@@ -194,8 +194,9 @@ export async function replayCapture(
   };
   await scope.audit('replay.capture', 'ok', auditDetails, { actorType: 'operator' });
   // Keep the milestone's operator-facing event name stable for aggregate
-  // instrumentation without duplicating any customer content.
-  await scope.audit('replay_run', 'ok', auditDetails, { actorType: 'operator' });
+  // instrumentation without duplicating any customer content. instrument() adds
+  // the workspace billing tier and source dimensions required by the brief.
+  await scope.instrument('replay_run', 'operator', auditDetails, { actorType: 'operator' });
 
   return report;
 }

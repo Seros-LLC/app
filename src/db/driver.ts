@@ -266,6 +266,21 @@ function migrateSqlite(dbPath: string): string[] {
     raw.exec("ALTER TABLE task_writes ADD COLUMN claim_token TEXT");
   }
 
+  // workspaces.billing_tier (SER-9): the workspace/billing dimension every
+  // OPERATIONS-CHECKLIST §7 instrumentation event carries. Same catalogue guard as
+  // above — SQLite has no ADD COLUMN IF NOT EXISTS and this migrator re-runs on boot.
+  // Postgres gets migrations/pg/0018_workspace_billing_tier.sql.
+  const wsCols = raw.prepare("PRAGMA table_info(workspaces)").all() as { name: string }[];
+  if (!wsCols.some((c) => c.name === "billing_tier")) {
+    raw.exec("ALTER TABLE workspaces ADD COLUMN billing_tier TEXT NOT NULL DEFAULT 'trial'");
+  }
+
+  // drafts.first_shown_at (SER-9): dedupe key for suggestion_shown.
+  const shownCols = raw.prepare("PRAGMA table_info(drafts)").all() as { name: string }[];
+  if (!shownCols.some((c) => c.name === "first_shown_at")) {
+    raw.exec("ALTER TABLE drafts ADD COLUMN first_shown_at INTEGER");
+  }
+
   raw.close();
   return files;
 }
