@@ -1,5 +1,11 @@
 # Seros — application
 
+> **Status: paused.** Seros, LLC is a [solution development company](https://seros.dev).
+> This application is not deployed, not sold, and not accepting sign-ups. It stays public
+> as evidence of how we build: the confirmation gate, the tenancy checks, and the test and
+> eval suites below are real and runnable. See `business/PIVOT-DECISION.md` (private) for
+> the decision record.
+
 Turns what a team already said into confirmed, owned, dated tasks.
 Ingest a message, detect a commitment, draft a task, **show it to a human**, and only
 then write anything anywhere.
