@@ -315,3 +315,15 @@ For developers who prefer Make, the following targets are available:
 - `make worker` - start the background worker
 - `make test` - run tests
 - `make verify` - typecheck + tenancy check + tests
+
+## Status: paused (2026-09-19)
+
+Seros, LLC now sells solution development engagements rather than this product — see
+`../business/PIVOT-DECISION.md`. This application is **paused, not cancelled**:
+
+- It is not deployed. The fail-closed boot contract still gates any production start, and no
+  production environment variables should be set to work around it.
+- It is not sold. The public site has no sign-up path and does not link to `app.seros.dev`.
+- It is still maintained as reference work. `npm run verify` must stay green.
+
+Do not deploy this application without an explicit decision from the owner that reverses the pivot.
