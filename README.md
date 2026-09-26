@@ -120,9 +120,9 @@ the network call, and writes exactly one `action_meter` row on every terminating
 | `ollama,fake` | accept a regex-grade answer rather than none — a decision, written down |
 
 A chained call is still one metered row, and the provider string records which link actually
-served it: `ollama:qwen2.5:7b-instruct(after:http)`. No vendor has been chosen yet (ADR 0004
-is still open), so today the chain is Qwen alone; the moment a hosted model goes in front,
-Qwen becomes exactly what it should be — the thing that keeps the product working when
+served it: `ollama:qwen2.5:7b-instruct(after:http)`. ADR 0004 is still formally open. Locally
+the chain is Qwen alone. The paused production deployment ran Google Gemini (OpenAI-compatible
+endpoint) in front, with Qwen as the fallback: the thing that keeps the product working when
 someone else's API is having an afternoon.
 
 **A failed call invents nothing.** It returns `ok: false, value: null`, the job retries with
