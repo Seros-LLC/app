@@ -507,7 +507,7 @@ const FOOT = `<footer class="wrap app-foot">
   <div>Human confirmation required before any write. &copy; 2026 <strong>Seros, LLC</strong>.</div>
   <div>
     ${extLink('https://seros.dev/', 'Website')} &middot;
-    ${extLink('https://seros.dev/pricing', 'Pricing')} &middot;
+    ${extLink('https://seros.dev/work', 'About')} &middot;
     ${extLink('https://seros.dev/privacy', 'Privacy')} &middot;
     ${extLink('https://seros.dev/terms', 'Terms')} &middot;
     ${extLink('https://seros.dev/security', 'Security')}

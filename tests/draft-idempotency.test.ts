@@ -1,7 +1,7 @@
 /**
  * tests/draft-idempotency.test.ts — duplicate detect work must not duplicate a draft.
  *
- * REVIEW.md's former H5 path and TESTING-STRATEGY §1 both call out duplicate
+ * The defect review's former H5 path and TESTING-STRATEGY §1 both call out duplicate
  * drafts. Source-message dedupe and tracker-write idempotency were covered, but
  * two queued detect jobs for the same message still produced two random drafts.
  * This test drives the real worker twice, then checks durable rows and model spend.

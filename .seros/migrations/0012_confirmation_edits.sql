@@ -9,7 +9,7 @@
 -- quality and they were being stored identically.
 --
 -- ADR 0002 calls the confirm loop "the product's only compounding data asset",
--- and REVIEW.md M6 is explicit that edits and rejections are "data, not
+-- and the September 2026 defect review (finding M6) was explicit that edits and rejections are "data, not
 -- discards". Acceptance rate and owner accuracy are not computable from a table
 -- that has been overwritten. This is that finding's fix.
 --

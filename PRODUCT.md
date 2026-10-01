@@ -1,3 +1,5 @@
+> **Historical design brief for the paused product.** Not current positioning; see https://seros.dev.
+
 # Product
 
 <!-- impeccable:product-schema 1 -->

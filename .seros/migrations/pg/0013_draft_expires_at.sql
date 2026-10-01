@@ -1,5 +1,5 @@
 -- migrations/pg/0013_draft_expires_at.sql
--- Per-draft expiry deadline (REVIEW.md M7, brief §1.5).
+-- Per-draft expiry deadline (defect review finding M7, brief §1.5).
 --
 -- Drafts hold customer content — a title is the customer's own words — and until
 -- now nothing gave an unreviewed one an end date. Anything nobody clicked simply

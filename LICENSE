@@ -1,0 +1,17 @@
+Copyright (c) 2026 Seros, LLC. All rights reserved.
+
+This repository contains proprietary material of Seros, LLC, including product
+specifications, architecture and data-model documentation, security control mappings,
+architecture decision records, and any source code subsequently added to it. No licence is
+granted to copy, modify, distribute, or use the contents, in whole or in part, except:
+
+1. You may view the source and quote short excerpts for commentary or reporting.
+2. You may submit contributions, which are licensed to Seros, LLC under the terms of
+   CONTRIBUTING.md in the organisation's .github repository.
+
+Nothing in this repository is an offer, a warranty, or a representation about the security,
+availability or behaviour of any Seros service. Documents here describe intended design and
+are marked accordingly.
+
+"Seros", the Seros wordmark, and the Seros marks are trademarks of Seros, LLC. Nothing
+here grants a trademark licence.

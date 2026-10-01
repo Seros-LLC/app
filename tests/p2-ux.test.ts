@@ -92,7 +92,7 @@ test('a signed-out visitor still sees the sign-in affordance', () => {
 // ---------------------------------------------------------------------------
 
 test('external links open in a new tab, are rel-hardened, and announce themselves', () => {
-  const html = extLink('https://seros.dev/pricing', 'Pricing');
+  const html = extLink('https://seros.dev/work', 'About');
   assert.match(html, /target="_blank"/);
   assert.match(html, /rel="noopener"/);
   assert.match(html, /\(opens in a new tab\)/);

@@ -13,7 +13,7 @@ import type { TrackerTaskInput, TrackerWriteResult, TrackerWriter, TrackerOpenTa
  * written into the issue description as a marker and searched for before
  * creating. A timeout that actually succeeded upstream therefore resolves to
  * the existing issue on retry instead of creating a second one in a customer's
- * tracker, which ROADMAP/REVIEW call a trust incident.
+ * tracker, which is a trust incident.
  */
 
 const API = 'https://api.linear.app/graphql';

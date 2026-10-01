@@ -1,7 +1,7 @@
 /**
  * tests/draft-expiry.test.ts — an unreviewed draft must not live forever.
  *
- * REVIEW.md M7. Drafts hold customer content (a title is the customer's own
+ * Defect review finding M7. Drafts hold customer content (a title is the customer's own
  * words), and until `expires_at` landed nothing gave an unconfirmed one an end
  * date: anything nobody clicked simply accumulated, which quietly contradicts
  * the retention promise the website makes.

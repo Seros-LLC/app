@@ -1,11 +1,11 @@
 # Seros — application
 
-> **Paused, not cancelled.** Seros, LLC is a
-> [solution development company](https://seros.dev). This application is not deployed, not
-> sold, and has no sign-up. It stays public as evidence of how we build.
+> **Paused, not cancelled.** Seros, LLC is an
+> [AI and agentic consulting firm](https://seros.dev). This application is not deployed and
+> not sold. Because nothing is deployed, there is no public sign-up, even though the code
+> contains a `/signup` route. It stays public as evidence of how we build.
 >
-> The decision record is `business/PIVOT-DECISION.md` (private). Do not deploy this without
-> an explicit decision from the owner that reverses the pivot.
+> Do not deploy this without an explicit decision from the owner that reverses the pivot.
 
 Turns what a team already said into confirmed, owned, dated tasks. Ingest a message, detect
 a commitment, draft a task, **show it to a human**, and only then write anything anywhere.
@@ -49,7 +49,7 @@ green while the product is paused.
 | `npm start` | the built web app (`npm run build` first) |
 | `npm run worker` | detection, drafting, and the tracker writer |
 | `npm run verify` | **typecheck + tenancy check + tests** |
-| `npm test` | 242 tests, offline, no keys |
+| `npm test` | 242 tests (229 pass, 13 Postgres-only tests skip without `SEROS_PG_TEST_URL`), offline, no keys |
 | `npm run test:pg` | Postgres integration tests; needs a running database |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run check:tenancy` | fails if any module reaches past `WorkspaceScope` |
@@ -121,8 +121,8 @@ the network call, and writes exactly one `action_meter` row on every terminating
 
 A chained call is still one metered row, and the provider string records which link actually
 served it: `ollama:qwen2.5:7b-instruct(after:http)`. ADR 0004 is still formally open. Locally
-the chain is Qwen alone. The paused production deployment ran Google Gemini (OpenAI-compatible
-endpoint) in front, with Qwen as the fallback: the thing that keeps the product working when
+the chain is Qwen alone. Before the pause, the hosted configuration ran Google Gemini
+(OpenAI-compatible endpoint) in front, with Qwen as the fallback: the thing that keeps the product working when
 someone else's API is having an afternoon.
 
 **A failed call invents nothing.** It returns `ok: false, value: null`, the job retries with
@@ -214,7 +214,9 @@ tools/                 tenancy, prod-env and Postgres test scripts
 ## Signing in
 
 Email and password only. There is no provider sign-in: a member receives an invite link,
-sets a password, and signs in with it. Passwords are scrypt-hashed, sign-in is rate-limited
+sets a password, and signs in with it. The code also has a `/signup` route that creates a new
+workspace and its first owner; it is reachable only where the app runs, and it is not running
+anywhere public. Passwords are scrypt-hashed, sign-in is rate-limited
 and locks out after repeated failures, and a CAPTCHA guards the form.
 
 Account recovery is deliberately manual, because a self-serve reset on a workspace this
@@ -260,7 +262,7 @@ connection pooling for Neon Postgres. Before any release:
 npx vercel env pull /tmp/seros-prod.env --environment production --yes
 npm run check:prod-env -- /tmp/seros-prod.env
 # To prove Vercel-hidden values through the deployed boot contract:
-npm run check:prod-env -- /tmp/seros-prod.env --live-probe https://app.seros.dev
+npm run check:prod-env -- /tmp/seros-prod.env --live-probe https://<app-host>
 rm -f /tmp/seros-prod.env
 ```
 
@@ -270,14 +272,14 @@ workspace. Linear is intentionally deferred: leave `SEROS_TRACKER` empty until L
 configured. Confirmed tasks remain queued securely and are never sent to a fake tracker.
 
 Slack's OAuth redirect URI must be exactly
-`https://app.seros.dev/connect/slack/callback`. The Slack app should request only the scopes
+`https://<app-host>/connect/slack/callback`. The Slack app should request only the scopes
 listed on `/connect`; the install flow stores the bot token encrypted and binds the callback
 to the authenticated workspace member.
 
-Before first customer use, complete one real Slack installation, select at least one channel,
-send a consented test commitment, confirm it in Seros, and verify exactly one Linear issue is
-created. Use the provider's own logs and Linear's issue history for that test; do not use a
-demo workspace.
+If it were ever offered to customers, then before any customer used it you would complete one
+real Slack installation, select at least one channel, send a consented test commitment,
+confirm it in Seros, and verify exactly one Linear issue is created. Use the provider's own
+logs and Linear's issue history for that test; do not use a demo workspace.
 
 ## Notes on tooling
 
@@ -292,3 +294,8 @@ than left as documentation for something that fails. The gates that actually run
 |---|---|
 | [`seros`](https://github.com/Seros-LLC/seros) | The specification behind this code: architecture, data model, ADRs, security controls, runbook |
 | [`website`](https://github.com/Seros-LLC/website) | seros.dev |
+
+## License
+
+Proprietary. Copyright (c) 2026 Seros, LLC. All rights reserved. You may view the source and
+quote short excerpts; no other licence is granted. See [LICENSE](LICENSE).

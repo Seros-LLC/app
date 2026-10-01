@@ -36,6 +36,7 @@ jobs:
         run: npm audit --audit-level=high
 
       - name: No committed build output or local database
+        shell: bash
         run: |
           fail=0
           if git ls-files --error-unmatch dist >/dev/null 2>&1; then
@@ -46,6 +47,15 @@ jobs:
             echo "::error file=$f::database file committed to the repo"
             fail=1
           done
+          # Extension-less SQLite files (e.g. a stray `fake` from SEROS_DB=fake)
+          # are caught by the 16-byte header every SQLite database starts with.
+          while IFS= read -r -d '' f; do
+            [ -f "$f" ] || continue
+            if head -c 16 -- "$f" | cmp -s - <(printf 'SQLite format 3\000'); then
+              echo "::error file=$f::SQLite database committed to the repo"
+              fail=1
+            fi
+          done < <(git ls-files -z)
           exit $fail
 
       - name: No obvious secrets committed

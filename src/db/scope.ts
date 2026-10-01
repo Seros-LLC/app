@@ -338,7 +338,7 @@ export class WorkspaceScope {
     // afterwards "the model got it right and the human agreed" and "the model got
     // it wrong and the human rewrote it" were indistinguishable, so acceptance rate
     // and owner accuracy could not be computed at all. ADR 0002 calls this loop the
-    // product's only compounding data asset, and REVIEW.md M6 is explicit that edits
+    // product's only compounding data asset, and the defect review (finding M6) was explicit that edits
     // are data, not discards. The human's values go in a sidecar instead.
     //
     // A field is recorded only when it actually differs from the draft, so NULL in

@@ -1,7 +1,9 @@
 {
   "name": "seros-app",
   "version": "1.0.0",
-  "description": "",
+  "private": true,
+  "description": "Slack-to-tracker application built by Seros, LLC. Paused: not deployed, not sold.",
+  "homepage": "https://seros.dev/work",
   "main": "dist/src/server.js",
   "scripts": {
     "build": "tsc -p tsconfig.build.json",

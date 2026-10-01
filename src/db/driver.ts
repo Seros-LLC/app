@@ -243,7 +243,7 @@ function migrateSqlite(dbPath: string): string[] {
   const files = migrationFiles("sqlite");
   for (const f of files) raw.exec(readFileSync(join(SQLITE_MIGRATIONS, f), "utf-8"));
 
-  // drafts.expires_at (REVIEW.md M7, brief §1.5) is added here rather than in a
+  // drafts.expires_at (defect review finding M7, brief §1.5) is added here rather than in a
   // migration file because SQLite has no `ADD COLUMN IF NOT EXISTS`, and the loop
   // above re-runs every file on every boot with no tracking table — so a bare ALTER
   // in a .sql file succeeds once and then crashes the app on its second start.

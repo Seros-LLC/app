@@ -19,3 +19,7 @@ server.log
 
 # Impeccable design-tool scratch state, not source of truth
 .impeccable/
+
+# stray SQLite files from running with SEROS_DB=fake
+/fake
+/fake-*

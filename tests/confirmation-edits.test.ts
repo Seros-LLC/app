@@ -7,7 +7,7 @@
  * right and the human agreed" and "the model got it wrong and the human rewrote
  * it" were the same two rows. Acceptance rate and owner accuracy, the numbers
  * ADR 0002 calls the product's only compounding data asset, were not computable.
- * REVIEW.md M6.
+ * Defect review finding M6.
  *
  * These tests fail against the old in-place UPDATE: the first because the draft
  * comes back carrying the human's title, the second because there is no sidecar
