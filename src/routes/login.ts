@@ -24,7 +24,7 @@ import {
   MemberCredentials, hashPassword, verifyPassword, needsRehash, passwordPolicyError,
   passwordMinLength, newInviteToken, normaliseEmail, lockoutPolicy, inviteTtlMs,
 } from '../password';
-import { page, esc, notice } from '../views';
+import { page, esc, notice, errorPage } from '../views';
 import { issueCaptcha, consumeCaptcha } from '../captcha';
 import type { PageContext } from '../views';
 
@@ -315,7 +315,17 @@ export async function logoutPost(req: Request, res: Response) {
   const s = currentSession(req);
   if (s && !csrfOk(s, (req.body ?? {}).csrf)) {
     console.log(JSON.stringify({ level: 'warn', event: 'csrf.rejected', path: '/logout' }));
-    return res.status(403).send('bad csrf token');
+    // Same recovery page requireCsrf serves; the session is left intact, so the
+    // person is still signed in and can sign out from the reloaded page.
+    return res.status(403).type('html').send(errorPage(403,
+      'That sign-out form was out of date, so you are still signed in',
+      'This happens when a page has been open for a long time. Reload any page and use Sign out again.',
+      {
+        heading: 'That form could not be accepted',
+        title: 'Form expired',
+        actions: [{ href: '/queue', label: 'Return to the queue', primary: true }],
+        ctx: { suppressAccount: true },
+      }));
   }
   if (s) {
     try {

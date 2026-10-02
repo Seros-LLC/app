@@ -30,7 +30,8 @@ process.env.SEROS_SLACK = 'fake';
 
 import { openDb, migrateDbAsync } from '../src/db/client';
 import { WorkspaceScope } from '../src/db/scope';
-import { csrfToken, requireCsrf, rateLimit, type Session } from '../src/auth';
+import { csrfToken, requireCsrf, rateLimit, setSession, type Session } from '../src/auth';
+import { logoutPost } from '../src/routes/login';
 import { confirmHandler } from '../src/routes/confirm';
 import { connectPage, channelsSave, disconnect } from '../src/routes/connect';
 import { askPage, askPost } from '../src/routes/ask';
@@ -351,4 +352,22 @@ test('an unauthorized disconnect is still 403 and still connected', async () => 
   assertErrorPage(out.body, 'disconnect');
   assert.match(out.body, /cannot disconnect Slack/i);
   void scope;
+});
+
+// ---------------------------------------------------------------------------
+// /logout checks its own CSRF token (it runs before requireCsrf); its refusal
+// must be the same recovery page, not the last bare `bad csrf token` string.
+// ---------------------------------------------------------------------------
+
+test('a stale sign-out form gets an application page, still 403, still signed in', async () => {
+  const s: Session = { workspaceId: WS, memberId: 'u-owner', issuedAt: Date.now(), sid: 'sid-logout', pv: 0 };
+  let cookie = '';
+  setSession({ setHeader: (_k: string, v: string) => { cookie = v.split(';')[0]!; } } as any, s);
+  const out = response();
+  await logoutPost({ headers: { cookie }, header: (n: string) => (n.toLowerCase() === 'cookie' ? cookie : undefined), body: { csrf: 'stale' }, path: '/logout' } as any, out.res);
+  assert.equal(out.status, 403);
+  assert.notEqual(out.body, 'bad csrf token');
+  assert.match(out.body, /<!doctype html>/);
+  assert.match(out.body, /role="alert"/);
+  assert.ok(!out.headers['Set-Cookie'], 'a refused sign-out does not clear the session');
 });
