@@ -1,7 +1,7 @@
 /**
  * The tracker boundary.
  *
- * v0 writes to exactly one tracker (business/ROADMAP.md, "Tracker write"). This
+ * v0 writes to exactly one tracker (business/archive/saas-2026-08/ROADMAP.md, "Tracker write"). This
  * interface exists so the choice is configuration rather than a code change, and
  * so the worker can be tested without a network.
  *
@@ -25,7 +25,7 @@ export interface TrackerTaskInput {
   outcome: string;
   /** Workspace member id of the suggested owner, or null when unknown. */
   owner: string | null;
-  /** ISO date, or null. v0 never guesses a date (ROADMAP.md, "Routing"). */
+  /** ISO date, or null. v0 never guesses a date (business/archive/saas-2026-08/ROADMAP.md, "Routing"). */
   dueDate: string | null;
   /** Permalink back to the message the commitment came from, when known. */
   sourcePermalink: string | null;
@@ -55,7 +55,7 @@ export interface TrackerWriter {
   write(input: TrackerTaskInput): Promise<TrackerWriteResult>;
   /** Configuration is present and usable. Does not prove the token is valid. */
   isReady(): Promise<boolean>;
-  /** Open tasks, for deduplication (ROADMAP.md, "Detection"). Optional in v0. */
+  /** Open tasks, for deduplication (business/archive/saas-2026-08/ROADMAP.md, "Detection"). Optional in v0. */
   listOpenTasks?(limit?: number): Promise<TrackerOpenTask[]>;
 }
 

@@ -1,7 +1,7 @@
 /**
  * Connecting Slack, and choosing what we may read.
  *
- * business/ROADMAP.md, "Admin and trust": OAuth connect and disconnect with the
+ * business/archive/saas-2026-08/ROADMAP.md, "Admin and trust": OAuth connect and disconnect with the
  * scopes listed, a channel picker with an explicit "we only read these"
  * statement, and data deletion on disconnect. This file is those three things.
  *

@@ -6,7 +6,7 @@ import type { TrackerTaskInput, TrackerWriteResult, TrackerWriter, TrackerOpenTa
  *
  * Chosen as the default because it is the cheapest of the roadmap's candidates
  * to build against and the fastest to demo. The choice is configuration
- * (SEROS_TRACKER), and business/ROADMAP.md is explicit that the five design
+ * (SEROS_TRACKER), and business/archive/saas-2026-08/ROADMAP.md is explicit that the five design
  * partners decide it - so nothing outside this file knows the tracker's name.
  *
  * Idempotency. Linear has no idempotency key on issueCreate, so the key is
