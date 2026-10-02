@@ -539,14 +539,14 @@ export function page(title: string, active: string, body: string, ctx: PageConte
     ? `<header class="app-header"><div class="wrap">
   ${BRAND('/login')}
   <nav class="app-nav">
-    <a href="https://seros.dev/" class="ext-link" target="_blank" rel="noopener" title="Back to the Seros website (opens in a new tab)">&#8592; seros.dev<span class="sr-only"> (opens in a new tab)</span></a>
+    ${extLink('https://seros.dev/', 'seros.dev', 'ext-link')}
   </nav>
 </div></header>`
     : `<header class="app-header"><div class="wrap">
   ${BRAND('/queue')}
   <nav class="app-nav">
     ${nav}
-    <a href="https://seros.dev/" class="ext-link" target="_blank" rel="noopener" title="Back to the Seros website (opens in a new tab)">&#8592; seros.dev<span class="sr-only"> (opens in a new tab)</span></a>
+    ${extLink('https://seros.dev/', 'seros.dev', 'ext-link')}
   </nav>
   ${who}
 </div></header>`;

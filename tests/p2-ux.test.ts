@@ -174,3 +174,18 @@ test('a saved channel selection names Review drafts as the next step', async () 
 });
 
 void csrfToken;
+
+test('every link that leaves the app, header included, carries the same new-tab treatment', () => {
+  for (const ctx of [{}, { chrome: 'auth' as const }]) {
+    const html = page('Queue', '/queue', '<h1>Q</h1>', ctx);
+    const links = html.match(/<a [^>]*href="https?:\/\/[^"]*"[^>]*>[\s\S]*?<\/a>/g) ?? [];
+    assert.ok(links.length >= 6, 'header and footer links are all found');
+    for (const a of links) {
+      assert.match(a, /target="_blank"/, a);
+      assert.match(a, /rel="noopener"/, a);
+      assert.match(a, /class="ext-cue" aria-hidden="true"> ↗</, `visible cue: ${a}`);
+      assert.match(a, /class="sr-only"> \(opens in a new tab\)/, `announced: ${a}`);
+      assert.ok(!a.includes('&#8592;'), 'no back-arrow implying a same-tab return');
+    }
+  }
+});
